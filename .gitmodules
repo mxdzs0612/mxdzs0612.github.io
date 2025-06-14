@@ -1,0 +1,3 @@
+[submodule "themes/anatole-zola"]
+	path = themes/anatole-zola
+	url = git@github.com:longfangsong/anatole-zola.git
