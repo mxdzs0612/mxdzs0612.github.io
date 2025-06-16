@@ -77,23 +77,17 @@ highlight_theme = "base16-ocean-dark"
 [extra]
 # Put all your custom variables here
 default_mode = "dark"
-mode = "light/dark"
 
 [extra.social]
-github = "mxdzs0612"
-twitter = ""
+github = ""
+twitter = "w"
 facebook = ""
-instagram = ""
-dribbble = ""
-weibo = ""
+instagram = "r"
+dribbble = "t"
+weibo = "y"
 linkedin = ""
 flickr = ""
 
 [extra.show]
 tags = true
-links = true
-
-[extra.comment.utterances]
-repo = "mxdzs0612/mxdzs0612.github.io"
-issue_term = "pathname"
-theme = "github-light"
+links = false
