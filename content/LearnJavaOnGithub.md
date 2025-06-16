@@ -1,7 +1,7 @@
 +++
 title = "GitHub上的一些不错的Java学习资源"
 template = "page.html"
-slug = "1"
+slug = "learningjavaongithub"
 date = 2019-08-01T15:00:00Z
 [taxonomies]
 tags = ["Java"]
@@ -10,7 +10,7 @@ summary = "总结一下在GitHub上看到的比较好的Java学习资料"
 +++
 这里总结一下在GitHub上看到的比较好的Java学习资料，其中大部分都是中文的。
 
-这份资料主要是方便自己看的。不过，如果有读者不小心读到本文并且感觉对自己有帮助的话，还望去右上角给我点个star鼓励我。
+这份资料主要是方便自己看的。不过，如果有读者不小心读到本文并且感觉对自己有帮助的话，还望点个`Follow`鼓励我。
 
 <!-- more -->
 

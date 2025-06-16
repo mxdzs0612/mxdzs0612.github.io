@@ -11,25 +11,26 @@ default_language = "zh"
 
 theme = "anatole-zola"
 
+
 [languages.zh]
-title = "mxdzs0612's blog"
-description = "Try to restart my blog."
+title = "mxdzs0612的博客"
+description = "尝试重启博客。"
 generate_feeds = true
 taxonomies = [
     {name = "tags"},
 ]
 
 [languages.ja]
-title = "mxdzs0612's blog"
-description = "Try to restart my blog."
+title = "mxdzs0612 の ブログ"
+description = "ブログを再開してみます。"
 generate_feeds = true
 taxonomies = [
     {name = "tags"},
 ]
 
 [languages.en]
-title = "Anatole"
-description = "A other zola theme"
+title = "mxdzs0612's blog"
+description = "Try to restart my blog."
 generate_feeds = true
 taxonomies = [
     {name = "tags"},
@@ -77,11 +78,14 @@ highlight_theme = "base16-ocean-dark"
 [extra]
 # Put all your custom variables here
 default_mode = "dark"
-mode = "light/dark"
+# mode = "light/dark"
 
 [extra.social]
 github = "mxdzs0612"
+gitlab = ""
+stackoverflow = "" # use user_id
 twitter = ""
+mastodon = "" # use hostname/@username
 facebook = ""
 instagram = ""
 dribbble = ""
