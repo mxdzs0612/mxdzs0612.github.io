@@ -4,7 +4,7 @@ template = "page.html"
 slug = "learningjavaongithub"
 date = 2019-08-01T15:00:00Z
 [taxonomies]
-tags = ["Java", "Learn"]
+tags = ["Java"]
 [extra]
 summary = "总结一下在GitHub上看到的比较好的Java学习资料"
 +++
