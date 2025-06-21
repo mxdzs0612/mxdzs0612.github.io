@@ -14,7 +14,7 @@ theme = "anatole-zola"
 
 [languages.zh]
 title = "mxdzs0612的博客"
-description = "尝试重启博客。"
+description = "尝试重启博客中"
 generate_feeds = true
 taxonomies = [
     {name = "tags"},
@@ -49,8 +49,8 @@ last_page = "上一页"
 
 [languages.ja.translations]
 language_name = "日本語"
-about = "About"
-home = "Home"
+about = "プロフィール"
+home = "ホーム"
 tags = "タグ"
 archive = "アーカイブ"
 links = "リンク"
@@ -77,8 +77,8 @@ highlight_theme = "base16-ocean-dark"
 
 [extra]
 # Put all your custom variables here
-default_mode = "dark"
-# mode = "light/dark"
+# default_mode = "dark"
+mode = "light/dark"
 
 [extra.social]
 github = "mxdzs0612"
