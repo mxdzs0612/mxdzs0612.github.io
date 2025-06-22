@@ -20,21 +20,21 @@ taxonomies = [
     {name = "tags"},
 ]
 
-[languages.ja]
-title = "mxdzs0612 の ブログ"
-description = "ブログを再開してみます。"
-generate_feeds = true
-taxonomies = [
-    {name = "tags"},
-]
-
-[languages.en]
-title = "mxdzs0612's blog"
-description = "Try to restart my blog."
-generate_feeds = true
-taxonomies = [
-    {name = "tags"},
-]
+#[languages.ja]
+#title = "mxdzs0612 の ブログ"
+#description = "ブログを再開してみます。"
+#generate_feeds = true
+#taxonomies = [
+#    {name = "tags"},
+#]
+#
+#[languages.en]
+#title = "mxdzs0612's blog"
+#description = "Try to restart my blog."
+#generate_feeds = true
+#taxonomies = [
+#    {name = "tags"},
+#]
 
 [languages.zh.translations]
 language_name = "中文"
@@ -47,27 +47,27 @@ date_format = "%Y-%m-%d"
 next_page = "下一页"
 last_page = "上一页"
 
-[languages.ja.translations]
-language_name = "日本語"
-about = "プロフィール"
-home = "ホーム"
-tags = "タグ"
-archive = "アーカイブ"
-links = "リンク"
-date_format = "%Y-%m-%d"
-next_page = "次頁"
-last_page = "前頁"
-
-[languages.en.translations]
-language_name = "English"
-about = "About"
-home = "Home"
-tags = "Tags"
-archive = "Archive"
-links = "Links"
-date_format = "%Y-%m-%d"
-next_page = "Next Page"
-last_page = "Last Page"
+#[languages.ja.translations]
+#language_name = "日本語"
+#about = "プロフィール"
+#home = "ホーム"
+#tags = "タグ"
+#archive = "アーカイブ"
+#links = "リンク"
+#date_format = "%Y-%m-%d"
+#next_page = "次頁"
+#last_page = "前頁"
+#
+#[languages.en.translations]
+#language_name = "English"
+#about = "About"
+#home = "Home"
+#tags = "Tags"
+#archive = "Archive"
+#links = "Links"
+#date_format = "%Y-%m-%d"
+#next_page = "Next Page"
+#last_page = "Last Page"
 
 [markdown]
 # Whether to do syntax highlighting
@@ -77,8 +77,8 @@ highlight_theme = "base16-ocean-dark"
 
 [extra]
 # Put all your custom variables here
-# default_mode = "dark"
-mode = "light/dark"
+default_mode = "dark"
+# mode = "light/dark"
 
 [extra.social]
 github = "mxdzs0612"
