@@ -1,3 +1,6 @@
 [submodule "themes/anatole-zola"]
 	path = themes/anatole-zola
 	url = git@github.com:longfangsong/anatole-zola.git
+[submodule "themes/abridge"]
+	path = themes/abridge
+	url = https://github.com/jieiku/abridge.git

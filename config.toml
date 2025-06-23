@@ -3,6 +3,7 @@ base_url = "https://mxdzs0612.github.io/"
 
 # Whether to automatically compile all Sass files in the sass directory
 compile_sass = true
+generate_feeds = true
 
 # Whether to build a search index to be used later on by a JavaScript library
 build_search_index = false
@@ -14,8 +15,8 @@ theme = "anatole-zola"
 
 [languages.zh]
 title = "mxdzs0612的博客"
-description = "尝试重启博客中"
-generate_feeds = true
+description = "尝试重启博客中,当成笔记软件用的，无所谓有没有人看了～"
+feed_filenames = ["rss.xml"]
 taxonomies = [
     {name = "tags"},
 ]
@@ -100,4 +101,4 @@ links = true
 [extra.comment.utterances]
 repo = "mxdzs0612/mxdzs0612.github.io"
 issue_term = "pathname"
-theme = "github-light"
+theme = "github-dark"
