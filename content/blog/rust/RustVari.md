@@ -82,3 +82,48 @@ fn main() {
 ```
 
 ## const 与 static
+常量和静态变量的名称通常应全部大写，且在单词间加下划线。他们的区别如下：
+### 常量const
+常量的值必须是编译时已知的常量表达式，必须制定类型和值。
+
+常量被直接作用于底层编译结果，而不是简单的字符替换。
+
+作用域是**块**级，只在声明的作用域内可见。
+### 静态变量static
+静态变量是在运行时分配内存的。
+
+静态变量是**变量**，并非不可变的，可在`unsafe`代码段中修改。
+
+> 应尽量避免使用`unsafe`。
+
+生命周期是整个程序的运行时间。
+
+***
+**例子**
+```rust
+static MY_STATIC: i32 = 42;
+static mut MY_MUT_STATIC: i32 = 42;
+
+fn main() {
+    // const
+    const SECOND_HOUR: usize = 3_600;
+    const SECOND_DAY: usize = 24 * SECOND_HOUR; // compile-time constant
+
+    {
+        const SE: usize = 1_000;
+        println!("{SE}");
+    }
+
+    // println!("{SE}");  // 无法打印
+    println!("{}", SECOND_DAY);
+    // MY_STATIC = 2; // 不可修改
+    println!("{MY_STATIC}");
+    unsafe {
+        MY_MUT_STATIC = 32;
+        println!("{MY_MUT_STATIC}");
+    }
+    // println!("{MY_MUT_STATIC}"); // 不可打印，只能在`unsafe`里打印
+}
+
+
+```
