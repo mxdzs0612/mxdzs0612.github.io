@@ -2,10 +2,13 @@
 title = "Rust 学习笔记（一）"
 slug = "rust_note_1"
 date = 2025-06-21T15:00:07Z
+updated = 2025-06-23T20:00:07Z
 [taxonomies]
 tags = ["Rust", "Learn"]
 [extra]
 summary = "Rust入门学习笔记"
+pinned = false
+post_listing_date = "both"
 +++
 <!-- 抄了一份 Rust 的新手教程，先丢个链接方便自己找，有空再来整理吧。 -->
 <!-- [地址](https://juejin.cn/post/7150187051621548046) -->

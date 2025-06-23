@@ -3,10 +3,12 @@ title = "GitHub上的一些不错的Java学习资源"
 template = "page.html"
 slug = "learningjavaongithub"
 date = 2019-08-01T15:00:00Z
+updated = 2021-06-23T15:00:07Z
 [taxonomies]
 tags = ["Java", "Learn"]
 [extra]
 summary = "总结一下在GitHub上看到的比较好的Java学习资料"
+post_listing_date = "both"
 +++
 这里总结一下在GitHub上看到的比较好的Java学习资料，其中大部分都是中文的。
 

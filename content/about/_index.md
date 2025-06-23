@@ -1,7 +1,4 @@
 +++
-title = "About"
-template = "about.html"
-paginate_by = 0
+render = false
+insert_anchor_links = "left"
 +++
-
-About this site

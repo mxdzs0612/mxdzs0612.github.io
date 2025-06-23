@@ -1,5 +1,8 @@
 # The URL the site will be built for
 base_url = "https://mxdzs0612.github.io/"
+title = "mxdzs0612的博客"
+description = "尝试重启博客中,当成笔记软件用的，无所谓有没有人看了～"
+taxonomies = [{name = "tags", feed = true}]
 
 # Whether to automatically compile all Sass files in the sass directory
 compile_sass = true
@@ -8,95 +11,42 @@ generate_feeds = true
 # Whether to build a search index to be used later on by a JavaScript library
 build_search_index = false
 
-default_language = "zh"
+default_language = "zh-Hans"
 
-theme = "anatole-zola"
-
-
-[languages.zh]
-title = "mxdzs0612的博客"
-description = "尝试重启博客中,当成笔记软件用的，无所谓有没有人看了～"
-feed_filenames = ["rss.xml"]
-taxonomies = [
-    {name = "tags"},
-]
-
-#[languages.ja]
-#title = "mxdzs0612 の ブログ"
-#description = "ブログを再開してみます。"
-#generate_feeds = true
-#taxonomies = [
-#    {name = "tags"},
-#]
-#
-#[languages.en]
-#title = "mxdzs0612's blog"
-#description = "Try to restart my blog."
-#generate_feeds = true
-#taxonomies = [
-#    {name = "tags"},
-#]
-
-[languages.zh.translations]
-language_name = "中文"
-home = "首页"
-about = "关于"
-tags = "标签"
-archive = "归档"
-links = "友链"
-date_format = "%Y-%m-%d"
-next_page = "下一页"
-last_page = "上一页"
-
-#[languages.ja.translations]
-#language_name = "日本語"
-#about = "プロフィール"
-#home = "ホーム"
-#tags = "タグ"
-#archive = "アーカイブ"
-#links = "リンク"
-#date_format = "%Y-%m-%d"
-#next_page = "次頁"
-#last_page = "前頁"
-#
-#[languages.en.translations]
-#language_name = "English"
-#about = "About"
-#home = "Home"
-#tags = "Tags"
-#archive = "Archive"
-#links = "Links"
-#date_format = "%Y-%m-%d"
-#next_page = "Next Page"
-#last_page = "Last Page"
+theme = "tabi"
 
 [markdown]
 # Whether to do syntax highlighting
 # Theme can be customised by setting the `highlight_theme` variable to a theme supported by Zola
 highlight_code = true
-highlight_theme = "base16-ocean-dark"
+highlight_theme = "css"
+external_links_class = "external"
 
 [extra]
 # Put all your custom variables here
 default_mode = "dark"
-# mode = "light/dark"
+# Enable JavaScript theme toggler to allow users to switch between dark/light mode.
+# If disabled, your site will use the theme specified in the `default_theme` variable.
+theme_switcher = true
+# Add a "copy" button to code blocks (loads ~700 bytes of JavaScript).
+# Can be set at page or section levels, following the hierarchy: page > section > config. See: https://welpo.github.io/tabi/blog/mastering-tabi-settings/#settings-hierarchy
+copy_button = true
+# Make code block names clickable if they are URLs (loads ~400 bytes of JavaScript).
+# Can be set at page or section levels, following the hierarchy: page > section > config. See: https://welpo.github.io/tabi/blog/mastering-tabi-settings/#settings-hierarchy
+code_block_name_links = false
+# Quick navigation buttons.
+# Adds "go up" and "go to comments" buttons on the bottom right (hidden for mobile).
+# Can be set at page or section levels, following the hierarchy: page > section > config. See: https://welpo.github.io/tabi/blog/mastering-tabi-settings/#settings-hierarchy
+quick_navigation_buttons = true
 
-[extra.social]
-github = "mxdzs0612"
-gitlab = ""
-stackoverflow = "" # use user_id
-twitter = ""
-mastodon = "" # use hostname/@username
-facebook = ""
-instagram = ""
-dribbble = ""
-weibo = ""
-linkedin = ""
-flickr = ""
-
-[extra.show]
-tags = true
-links = true
+menu = [
+    { name = "blog", url = "blog", trailing_slash = true },
+    { name = "archive", url = "archive", trailing_slash = true },
+    { name = "tags", url = "tags", trailing_slash = true },
+    { name = "projects", url = "projects", trailing_slash = true },
+    { name = "about", url = "about", trailing_slash = true },
+    { name = "github", url = "https://github.com/mxdzs0612", trailing_slash = false },
+]
 
 [extra.comment.utterances]
 repo = "mxdzs0612/mxdzs0612.github.io"
