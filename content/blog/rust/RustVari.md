@@ -1,12 +1,12 @@
 +++
-title = "Rust 学习笔记（一）"
+title = "Rust 学习笔记（一）：变量与数据类型"
 slug = "rust_note_1"
 date = 2025-06-21T15:00:07Z
-updated = 2025-06-23T20:00:07Z
+updated = 2025-06-24T20:45:07Z
 [taxonomies]
 tags = ["Rust", "Learn"]
 [extra]
-summary = "Rust入门学习笔记"
+summary = "变量与数据类型"
 pinned = false
 post_listing_date = "both"
 +++
@@ -16,8 +16,6 @@ post_listing_date = "both"
 学习笔记。来源：原子之音
 > [视频](https://www.bilibili.com/video/BV15y421h7j7/)
  [代码](https://gitlab.com/yzzy/rust_project)
-
-# 变量与数据类型
 
 ## 变量与不可变性
 
@@ -52,7 +50,7 @@ Rust 允许隐藏变量。意思是可以声明一个与前一个变量同名的
 这个变量是隐藏了，而不是消失了，具体可以看下面的例子。
 
 ***
-**例子**
+### 例子
 ```rust
 fn main() {
     // 不可变与命名
@@ -83,13 +81,15 @@ fn main() {
 
 ## const 与 static
 常量和静态变量的名称通常应全部大写，且在单词间加下划线。他们的区别如下：
-### 常量const
+
+### 常量 const
 常量的值必须是编译时已知的常量表达式，必须制定类型和值。
 
 常量被直接作用于底层编译结果，而不是简单的字符替换。
 
 作用域是**块**级，只在声明的作用域内可见。
-### 静态变量static
+
+### 静态变量 static
 静态变量是在运行时分配内存的。
 
 静态变量是**变量**，并非不可变的，可在`unsafe`代码段中修改。
@@ -99,7 +99,7 @@ fn main() {
 生命周期是整个程序的运行时间。
 
 ***
-**例子**
+### 例子
 ```rust
 static MY_STATIC: i32 = 42;
 static mut MY_MUT_STATIC: i32 = 42;
@@ -124,6 +124,147 @@ fn main() {
     }
     // println!("{MY_MUT_STATIC}"); // 不可打印，只能在`unsafe`里打印
 }
+```
 
+## 基础数据类型
+| 类型 | 描述 | 子类型 |
+| --- | --- | --- |
+| 整型 | 有符号整型 | i8，i16，i32（默认推断），i64，i128 |
+|  | 无符号整型 | u8，u16，u32，u64，u128 |
+|  | 平台决定大小整型 | usize，isize |
+| 浮点型 | 浮点数 | f32，f64（强烈建议使用） |
+| 布尔型 | true/false | bool |
+| 字符型 | 使用单引号表示，可以表示Unicode表情 | char  |
+***
 
+### 例子
+```rust
+fn main() {
+    // 进制的字面量
+    let a1 = -125;
+    let a2 = 0xFF;
+    let a3 = 0o13;
+    let a4 = 0b10;
+    println!("{a1} {a2} {a3} {a4}"); // -125 255 11 2
+    // Max Min
+    println!("u32 max: {}", u32::MAX); // 4294967295
+    println!("u32 min: {}", u32::MIN); // 0
+    println!("i32 max: {}", i32::MAX); // 2147483647
+    println!("i32 min: {}", i32::MIN); // -2147483648
+    println!("usize max: {}", usize::MAX); // 2^64 - 1 = 18,446,744,073,709,551,615
+    // 基础数据类型占用的空间大小
+    println!("isize is {} bytes", std::mem::size_of::<isize>()); // 8
+    println!("usize is {} bytes", std::mem::size_of::<usize>()); // 8
+    println!("u64 is {} bytes", std::mem::size_of::<u64>()); // 8
+    println!("i64 is {} bytes", std::mem::size_of::<i64>()); // 8
+    println!("i32 is {} bytes", std::mem::size_of::<i32>()); // 4
+
+    // float
+    let f1: f32 = 1.23234;
+    let f2: f64 = 9.88888;
+    // 四舍五入
+    println!("Float are {:.2} {:.2}", f1, f2); // 1.23 9.89
+
+    // bool
+    let is_ok = true;
+    let can_ok: bool = false;
+    println!("is ok? {is_ok} can ok? {can_ok}");  // true false
+    println!(
+        "is ok or can ok ?{}, can ok and is ok? {}",
+        is_ok || can_ok,
+        is_ok && can_ok
+    ); // true false
+    // char
+    let char_c = 'C';
+    let emo_char = '😀';
+    println!("You Get {char_c} feel {emo_char}");
+    println!("{}", emo_char as usize); // 128512
+    println!("{}", emo_char as i32); // 128512
+}
+
+```
+
+## 元组和数组
+相同点：
+- 都是复合类型（Compound Types，Vec Map这些是集合类型 Collection Types）
+- 长度固定
+- 都可以设置成可变的（mut）
+不同点：
+- 元组（Tuples）是不同数据类型的复合数据
+- 数组（Arrays）是同一类型的复合数据
+
+### 数组
+数组是固定长度的同构集合。
+
+创建方式:
+- [a, b, c]
+- [value: size] 长度为 size 初始化值为 value 的数组
+
+获取元素: arr[index]
+
+获取长度: arr.len()
+
+可以放在 for 循环中遍历。
+
+### 元组
+元组是固定长度的异构集合。
+
+空元组是函数的默认返回值。
+
+获取元素: tup.index
+
+没有 length
+
+***
+### 例子
+```rust
+fn main() {
+    // tuple
+    let tup = (0, "hi", 3.4);
+    // 不支持 {tup.0} 这种形式
+    println!("tup elements {} {} {}", tup.0, tup.1, tup.2);
+
+    let mut tup2 = (0, "hi", 3.4);
+    println!("tup2 elements {} {} {}", tup2.0, tup2.1, tup2.2);
+    tup2.1 = "f"; // 必须是同一类型，比如 tup2.0 = "f"; 是不行的
+    println!("tup2 elements {} {} {}", tup2.0, tup2.1, tup2.2);
+
+    // :?表示全部打印，这里只会打印 `()`
+    let tup3 = ();
+    println!("tup3 {:?}", tup3);
+    // println!("tup3 {}", tup3); // 报错没有实现特质
+
+    println!("Array");
+    let mut arr = [11, 12, 34];
+    arr[0] = 999;
+    println!("arr len {} first element is {}", arr.len(), arr[0]);
+
+    for elem in arr {
+        println!(" {}", elem);
+    }
+    let ar = [2; 3];
+    for i in ar {
+        println!("{}", i); // 2 2 2
+    }
+
+    // ownership
+    // 基础数据类型赋值是 copy
+    let arr_item = [1, 2, 3];
+    let tup_item = (2, "ff");
+    println!("arr: {:?}", arr_item);
+    println!("tup: {:?}", tup_item); // Clone
+    let arr_ownership = arr_item;
+    let tup_ownership = tup_item;
+    println!("arr: {:?}", arr_item);
+    println!("tup: {:?}", tup_item);
+    let a = 3;
+    let _a = a;
+    println!("{a}");
+    // copy
+    // move ownership
+    // 大部分复杂数据类型赋值默认都会执行 move
+    let string_item = String::from("aa");
+    let _string_item = string_item; // String 类型就把Ownership 进行move操作
+    // println!("{string_item}"); // 无法打印，报错value borrowed here after move
+}
 ```
