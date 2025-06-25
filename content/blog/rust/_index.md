@@ -6,6 +6,7 @@ transparent = true
 
 [extra]
 series = true
+# post_listing_index_reversed = true
 
 [extra.series_intro_templates]
 default = """

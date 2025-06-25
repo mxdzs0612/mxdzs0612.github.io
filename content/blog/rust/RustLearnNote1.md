@@ -209,7 +209,7 @@ fn main() {
 
 获取元素: tup.index
 
-没有 length
+没有 length。
 
 ***
 ### 例子
