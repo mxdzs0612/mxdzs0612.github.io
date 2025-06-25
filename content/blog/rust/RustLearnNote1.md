@@ -1,6 +1,6 @@
 +++
 title = "Rust 学习笔记（一）：变量与数据类型"
-slug = "rust_note_1"
+slug = "rust_learn_note_1"
 date = 2025-06-21T15:00:07Z
 updated = 2025-06-24T20:45:07Z
 [taxonomies]
@@ -12,10 +12,6 @@ post_listing_date = "both"
 +++
 <!-- 抄了一份 Rust 的新手教程，先丢个链接方便自己找，有空再来整理吧。 -->
 <!-- [地址](https://juejin.cn/post/7150187051621548046) -->
-
-学习笔记。来源：原子之音
-> [视频](https://www.bilibili.com/video/BV15y421h7j7/)
- [代码](https://gitlab.com/yzzy/rust_project)
 
 ## 变量与不可变性
 
