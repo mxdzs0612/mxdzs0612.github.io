@@ -1,8 +1,8 @@
 +++
 title = "Rust 学习笔记（二）：所有权与复杂类型"
 slug = "rust_learn_note_2"
-date = 2025-06-24T20:50:07Z
-updated = 2025-06-25T20:45:07Z
+date = 2025-06-24T20:50:00Z
+updated = 2025-06-27T18:45:00Z
 [taxonomies]
 tags = ["Rust", "Learn"]
 [extra]
@@ -25,7 +25,7 @@ STW 主要用于描述一种全局性的暂停，即应用所有线程都会停�
 并非所有 GC 算法都会导致 STW，一些现代的算法采用并发或者增量的 GC，减少全局停顿带来的影响。
 
 ### C 内存错误大全
-1. 内存泄漏 
+1. 内存泄漏
 ```C
 int* ptr = new int;
 // delete ptr;
@@ -128,4 +128,160 @@ pub struct String {
 }
 ```
 
-&str：字符串字面量，字符串的不可变切片引用，栈上分配，UTF-8 编码，由指针和长度构成
+&str：字符串**字面量**，字符串的不可变切片引用，栈上分配，UTF-8 编码，由指针和长度构成
+
+区别：String 有所有权，字面量没有。
+- 结构体属性尽量使用 String。
+  - 如果不使用显式声明生命周期，就无法使用 &str。
+  - 可能有隐患。
+- 函数参数在不想交出所有权的情况下，建议使用 &str
+  - &str 参数可以传递 &str 和 &String。
+  - &String 参数只能传递 &String。
+
+***
+### 例子
+```rust
+struct Person<'a> {
+    // 标注生命周期，代表字面量和结构体拥有相同的生命周期 'a
+    name: &'a str,
+    color: String,
+    age: i32,
+}
+
+// 传 &String &str 均可
+fn print(data: &str) {
+    println!("{}", data);
+}
+
+// 只能 &String
+fn print_string_borrow(data: &String) {
+    println!("{}", data);
+}
+
+fn main() {
+    // String &str
+    let name = String::from("Value C++");
+    // 三种方式：
+    // String::from
+    // to_string()
+    // to_owned()
+    let course = "Rust".to_string();
+    let new_name = name.replace("C++", "CPP");
+    println!("{name} {course} {new_name}");
+    let rust = "\x52\x75\x73\x74"; // ascii
+    println!("{rust}");
+
+    // struct
+    // &str
+    let color = "green".to_string();
+    // String
+    let name = "John";
+    let people = Person {
+        name: name,
+        color: color,
+        age: 89,
+    };
+    // func
+    let value = "value".to_owned();
+    print(&value);
+    print("value");
+    // print_string_borrow("value"); // 不能传字面量
+    print_string_borrow(&value);
+}
+```
+
+## 枚举与匹配
+
+### 枚举
+枚举（enum）是自定义的数据类型，表示一组具有离散可能值的变量。
+- 每种可能值都成为变体（variant）
+- 用法：{枚举名}::{变体名}
+
+枚举可以让代码更严谨易读安全。
+
+枚举支持内嵌类型，使得 rust 表达能力非常强，抽象度非常高。
+```rust
+enum Shape {
+  Circle(f64),
+  Rectangle(f64, f64),
+  Square(f64),
+}
+```
+
+常用枚举类型
+```rust
+pub enum Option<T> {
+    None,
+    Some<T>,
+}
+
+pub enum Result<T, E> {
+    Ok(T),
+    Err<E>,
+}
+```
+
+### 匹配模式 match
+匹配模式必须覆盖所有变体，可以使用`_`、`..=`、`if`等来实现。
+```rust
+match number {}
+    0 => println!("zero");
+    1 | 2 => println!("one or two");
+    3..=9 => println!("three to nine");
+    n if n % 2 == 0  => println!("even");
+    _  => println!("others");
+```
+
+***
+### 例子
+```rust
+use std::collections::btree_set::Union;
+
+// 简单枚举类型
+enum Color {
+    Red,
+    Yellow,
+    Blue,
+}
+
+fn print_color(my_color: Color) {
+    match my_color {
+        Color::Red => println!("Red"),
+        Color::Yellow => println!("Yellow"),
+        Color::Blue => println!("Blue"),
+        // 如果没有覆盖所有枚举值，这个地方就需要加一个下划线表示 default
+    }
+}
+
+// 复杂枚举类型
+enum BuildingLocation {
+    Number(i32),
+    Name(String), // 不要用 &str，否则所有权会出现问题
+    Unknown,
+}
+
+// 关联函数，结构体/枚举都可以用
+// 用法： impl + 类型名
+impl BuildingLocation {
+    fn print_location(&self) {
+        match self {
+            // BuildingLocation::Number(44)
+            BuildingLocation::Number(c) => println!("building number {}", c),
+            // BuildingLocation::Name("ok".to_string())
+            BuildingLocation::Name(s) => println!("building name {}", *s),
+            BuildingLocation::Unknown => println!("unknown"),
+        }
+    }
+}
+
+fn main() {
+    let a = Color::Red;
+    print_color(a);
+    // let b = a; // 报错。此时 a 所有权已经被交给函数了
+
+    let house = BuildingLocation::Name("fdfd".to_string());
+    let house = BuildingLocation::Number(1);
+    let house = BuildingLocation::Unknown;
+    house.print_location();
+}
+```
