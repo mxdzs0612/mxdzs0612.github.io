@@ -6,7 +6,7 @@ transparent = true
 
 [extra]
 series = true
-# post_listing_index_reversed = true
+post_listing_index_reversed = false
 
 [extra.series_intro_templates]
 default = """
@@ -17,23 +17,22 @@ default = """
 
 [extra.series_outro_templates]
 next_only = """
-📝 导航
+📝 系列导航
 - 下一篇: $NEXT_HTML_LINK
 - [合集列表]($SERIES_PERMALINK)
 """
 
 middle = """
 ---
-📝 导航
+📝 系列导航
 - 上一篇: $PREV_HTML_LINK
 - 下一篇: $NEXT_HTML_LINK
 - [合集列表]($SERIES_PERMALINK)
 """
 
 prev_only = """
-📝 导航
+📝 系列导航
 - 上一篇: $PREV_HTML_LINK
 - [合集列表]($SERIES_PERMALINK)
 """
 +++
-
