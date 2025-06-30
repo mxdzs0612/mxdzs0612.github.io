@@ -1,7 +1,7 @@
 +++
 title = "Rust 入门学习笔记（六）：泛型"
 slug = "rust_learn_note_5"
-date = 2025-06-30
+date = 2025-07-01
 updated = 2025-07-01
 draft = true
 [taxonomies]

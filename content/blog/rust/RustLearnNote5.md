@@ -1,7 +1,7 @@
 +++
 title = "Rust 入门学习笔记（五）：生命周期"
 slug = "rust_learn_note_5"
-date = 2025-06-30
+date = 2025-06-30T22:30:10Z
 updated = 2025-06-30
 [taxonomies]
 tags = ["Rust", "Learn"]
