@@ -1,5 +1,5 @@
 +++
-title = "Rust 学习笔记"
+title = "Rust 入门学习笔记"
 template = "series.html"
 sort_by = "slug"
 transparent = true

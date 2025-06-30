@@ -1,8 +1,8 @@
 +++
-title = "Rust 学习笔记（二）：所有权与复杂类型"
+title = "Rust 入门学习笔记（二）：所有权与复杂类型"
 slug = "rust_learn_note_2"
-date = 2025-06-24T20:50:00Z
-updated = 2025-06-27T18:45:00Z
+date = 2025-06-24
+updated = 2025-06-27
 [taxonomies]
 tags = ["Rust", "Learn"]
 [extra]
