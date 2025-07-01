@@ -1,12 +1,12 @@
 +++
-title = "Rust 入门学习笔记（一）：变量与数据类型"
+title = "Rust 入门学习笔记（一）：变量与基础数据类型"
 slug = "rust_learn_note_1"
 date = 2025-06-21
 updated = 2025-06-24
+description = "变量，基础数据类型，元组和数组"
 [taxonomies]
 tags = ["Rust", "Learn"]
 [extra]
-summary = "变量与数据类型"
 pinned = false
 post_listing_date = "both"
 +++

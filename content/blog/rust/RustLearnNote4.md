@@ -3,10 +3,10 @@ title = "Rust 入门学习笔记（四）：错误处理"
 slug = "rust_learn_note_4"
 date = 2025-06-30T11:30:30Z
 updated = 2025-06-30
+description = "常见错误，错误处理和自定义错误处理"
 [taxonomies]
 tags = ["Rust", "Learn"]
 [extra]
-summary = "常见错误处理和自定义错误处理"
 pinned = false
 post_listing_date = "both"
 +++
@@ -20,7 +20,7 @@ Rust 中的错误分为可恢复和不可恢复。
 
 ### Result
 Result 是一个枚举类型，通常用于表示函数执行的结果。
-```rust
+```rust,name=result.rs
 pub enum Result<T, E> {
     Ok(T), // 成功的结果
     Err(E), // 出现了错误
@@ -29,7 +29,7 @@ pub enum Result<T, E> {
 
 ### Option
 Option 也是一个枚举类型，通常用于表示一个可能为空的值。
-```rust
+```rust,name=option.rs
 pub enum Option<T> {
     None, // 空
     Some(T), // 其他返回值

@@ -3,10 +3,10 @@ title = "Rust 入门学习笔记（五）：生命周期"
 slug = "rust_learn_note_5"
 date = 2025-06-30T22:30:10Z
 updated = 2025-06-30
+description = "借用，函数生命周期，结构体生命周期"
 [taxonomies]
 tags = ["Rust", "Learn"]
 [extra]
-summary = "借用，生命周期（函数，结构体）"
 pinned = false
 post_listing_date = "both"
 +++
@@ -26,9 +26,10 @@ post_listing_date = "both"
 
 ### 借用检查规则
 Rust 存在一个借用检查器（Borrow Checker）。它有以下规则：
-1. 不可变引用规则：在任意时间，要么有一个可变引用，要么有一或多个不可变引用，二者不能同时存在。
+1. 不可变引用规则：在任意时间，可以有多个不可变引用。
 2. 可变引用规则：在任意时间，只能有一个可变引用访问数据，以防止并发修改导致的数据竞争。
 3. 生命周期规则：引用的生命周期必须在被引用的数据有效的时间范围内，以防止悬垂引用（即：引用的数据已经被销毁但引用还存在）。
+4. 在任意时间，要么有一个可变引用，要么有一或多个不可变引用，二者不能同时存在。
 
 ### 生命周期
 一般情况下 Borrow Checker 能够自行推断生命周期。如果不行，就需要在函数/结构体的签名中指定。
@@ -49,11 +50,16 @@ fn main() {
 
     let r3 = &mut s;
     println!("{}", r3);
-    // println!("{} {}", r1, r2); // 存在可变引用，不可变引用就不能用了
+    // println!("{} {}", r1, r2); // 存在可变引用，不可变引用就不能用了。此时会在定义可变引用的时候报错 cannot borrow `data` as mutable because it is also borrowed as immutable
 
     let result: &str;
     {
-        // result = "ff"; // 定义初始化可以分离。也就是说可以在块中初始化，此时外面能正常打印 ff
+        result = "ff"; // 定义初始化可以分离。也就是说可以在块中初始化块外定义的变量，此时外面能正常打印 ff
+    }
+    println!("{}", result); // 正常打印 ff
+
+    let result: &str;
+    {
         let r4 = &s;
         result = ff(r4);
     }
@@ -99,8 +105,8 @@ fn longest_str<'a, 'b, 'out>(s1: &'a str, s2: &'b str) -> &'out str
 // 所以需要一个 where 语句进行限定
 // 这种写法是取了 a b 的交集
 where
-    'a: 'out,
-    'b: 'out,
+    'a: 'out, // 'a 包含 'out
+    'b: 'out, // 'b 包含 'out
 {
     if s1.len() > s2.len() {
         s1
