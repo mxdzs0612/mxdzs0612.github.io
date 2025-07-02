@@ -58,7 +58,7 @@ fn main() {
 }
 ```
 
-## Trait Object 和 Box
+## 特质对象和 Box
 
 ### 特质对象
 特质对象（Trait Object）是实现了特定特质的类型的实例。
@@ -157,5 +157,311 @@ fn main() {
 }
 ```
 
-## 特质和泛型
+## 特质对象和泛型
+泛型能够提供特质对象的另一种写法。
+
 <!-- {{ admonition(type="warning", icon="tip", title="注意", text="WIP") }} -->
+<!-- [^1]
+[^1]: This is the first footnote. -->
+### 写法
+- 单个特质
+  - impl 写法：可以是不同类型：`fn call(item1: &impl Trait, item2: &impl Trait);`
+  - 泛型写法：同一泛型必须是相同类型：`fn call_generic<T: Trait>(item1: &T, item2: &T);`
+- 多个特质
+  - `fn call(item1: &(impl Trait + AnotherTrait));`
+  - （推荐）`fn call_generic<T: Trait + AnotherTrait>(item1: &T);`
+  - （更推荐，清晰）`fn call_generic<T>(item: &T) where T: Trait + AnotherTrait,`
+
+***
+### 例子
+```rust
+trait Overview {
+    fn overview(&self) -> String {
+        String::from("Course")
+    }
+}
+
+trait Another {
+    fn hell(&self) {
+        println!("welcome to hell");
+    }
+}
+
+struct Course {
+    headline: String,
+    author: String,
+}
+
+impl Overview for Course {}
+impl Another for Course {}
+
+struct AnotherCourse {
+    headline: String,
+    author: String,
+}
+
+impl Overview for AnotherCourse {}
+
+// impl 的写法
+fn call_overview(item: &impl Overview) {
+    println!("Overview {}", item.overview());
+}
+// 泛型写法，限定泛型需实现 Overview
+fn call_overview_generic<T: Overview>(item: &T) {
+    println!("Overview {}", item.overview());
+}
+
+fn call_overviewT(item: &impl Overview, item1: &impl Overview) {
+    println!("Overview {}", item.overview());
+    println!("Overview {}", item1.overview());
+}
+
+fn call_overviewTT<T: Overview>(item: &T, item1: &T) {
+    println!("Overview {}", item.overview());
+    println!("Overview {}", item1.overview());
+}
+
+// 多绑定
+fn call_mul_bind(item: &(impl Overview + Another)) {
+    println!("Overview {}", item.overview());
+    item.hell();
+}
+// where 的写法
+fn call_mul_bind_generic<T>(item: &T)
+where
+    T: Overview + Another,
+{
+    println!("Overview {}", item.overview());
+    item.hell();
+}
+
+fn main() {
+    let c0 = Course {
+        headline: "xx".to_owned(),
+        author: "yy".to_owned(),
+    };
+    let c1 = Course {
+        headline: "ff".to_owned(),
+        author: "yy".to_owned(),
+    };
+
+    let c2 = AnotherCourse {
+        headline: "ff".to_owned(),
+        author: "yz".to_owned(),
+    };
+    // 两种写法调用时是一样的
+    call_overview(&c1);
+    call_overview_generic(&c1);
+
+    call_overviewT(&c1, &c2);
+    // call_overviewTT(&c1, &c2); // 类型不同不能调用
+    // 两种写法调用时是一样的
+    call_overviewTT(&c1, &c0);
+    call_overviewT(&c1, &c0);
+
+    call_mul_bind(&c1);
+    // call_mul_bind(&c2); // 报错 c2 没有满足 Another 特质
+    call_mul_bind_generic(&c1);
+}
+```
+
+## 重载操作符
+Rust 重载只需要实现相应的特质。
+
+### 示例：为结构体实现加号
+```rust
+use std::ops::Add; // 这就是一个特质
+
+// 泛型在编译时确定，性能好
+#[derive(Debug)]
+struct Point<T> {
+    x: T,
+    y: T,
+}
+
+// T的这样类型 它可以执行相加的操作
+impl<T> Add for Point<T>
+where
+    T: Add<Output = T>, // 指定 Add 特质的关联类型 Output 为 T。这意味着当两个 T 类型的值相加时，结果类型必须也是 T。从 Add 的源码中可以看到 Output 是 Add 的返回值
+{
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Point {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+fn main() {
+    let i1 = Point { x: 1, y: 2 };
+    let i2 = Point { x: 1, y: 3 };
+    let sum = i1 + i2;
+    println!("{:?}", sum); // Point { x: 2, y: 5 }
+    let f1 = Point { x: 1.0, y: 2.2 };
+    let f2 = Point { x: 1.0, y: 3.0 };
+    let sum = f1 + f2; // Point { x: 2.0, y: 5.2 }
+    println!("{:?}", sum);
+}
+```
+
+## 多态和继承
+
+### 继承
+Rust 不支持面向对象，因此也不支持传统的继承概念，只是在思想上可以使用特质通过**层级化**的方式来完成继承的需求。
+
+Rust 选择了函数化的编程方式，即通过组合和委托来平替继承。
+
+### 多态
+多态并非面向对象独有的概念，它通常是指同一个方法可以根据对象的不同类型表现出不同的行为。
+
+多态允许一个接口或方法在不同的上下文中表现出不同的行为，这样做的好处是可以提高代码的灵活性和可扩展性，使得代码易于维护和理解。
+
+Rust 中的多态无处不在。
+
+***
+### 例子
+```rust
+use std::collections::VecDeque;
+// 多态
+trait Driver {
+    fn drive(&self);
+}
+struct Car;
+impl Driver for Car {
+    fn drive(&self) {
+        println!("Car is driving");
+    }
+}
+
+struct SUV;
+impl Driver for SUV {
+    fn drive(&self) {
+        println!("SUV is driving");
+    }
+}
+
+fn road(vehicle: &dyn Driver) {
+    vehicle.drive();
+}
+
+// 继承思想：层级性特质
+// 单向队列特质
+trait Queue {
+    fn len(&self) -> usize;
+    fn push_back(&mut self, n: i32);
+    fn pop_front(&mut self) -> Option<i32>;
+}
+
+// 双向队列特质
+// 加了`:`后就会自动实现 Queue 里的东西，有点像“继承”
+trait Deque: Queue {
+    fn push_front(&mut self, n: i32);
+    fn pop_back(&mut self) -> Option<i32>;
+}
+
+#[derive(Debug)]
+struct List {
+    // 偷懒的写法，直接调用 Rust 中的双向链表
+    data: VecDeque<i32>,
+}
+// 非要实现继承，就会有很多无效代码
+impl List {
+    fn new() -> Self {
+        let data = VecDeque::<i32>::new();
+        Self { data }
+    }
+}
+
+impl Deque for List {
+    fn push_front(&mut self, n: i32) {
+        self.data.push_front(n)
+    }
+
+    fn pop_back(&mut self) -> Option<i32> {
+        self.data.pop_back()
+    }
+}
+
+impl Queue for List {
+    fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    fn push_back(&mut self, n: i32) {
+        self.data.push_back(n)
+    }
+
+    fn pop_front(&mut self) -> Option<i32> {
+        self.data.pop_front()
+    }
+}
+
+fn main() {
+    // 只要用了特质，基本肯定会有多态
+    // 函数式编程到处都是多态
+    road(&Car);
+    road(&SUV);
+
+    let mut l = List::new();
+    l.push_back(1);
+    l.push_front(0);
+    println!("{:?}", l);
+    l.push_front(2);
+    println!("{:?}", l);
+    l.push_back(2);
+    println!("{:?}", l);
+    println!("{}", l.pop_back().unwrap());
+    println!("{:?}", l);
+}
+```
+
+## 常见特质示例
+```rust
+// Debug Clone Copy PartialEq
+// 注意层级，也就是结构体每层都要实现
+#[derive(Debug, Clone, Copy)]
+enum Race {
+    White,
+    Yellow,
+    Black,
+}
+
+impl PartialEq for Race {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Race::White, Race::White) => true,
+            (Race::Yellow, Race::Yellow) => true,
+            (Race::Black, Race::Black) => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct User {
+    id: u32,
+    name: String, // 因为存在 String，User 没有 Copy 的默认实现
+    race: Race,
+}
+
+impl PartialEq for User {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.name == other.name && self.race == other.race
+    }
+}
+
+fn main() {
+    let user = User {
+        id: 3,
+        name: "John".to_owned(),
+        race: Race::Yellow,
+    };
+    println!("{:?}", user); // debug 特质，注意 User 和 Race 都要实现
+    println!("{:#?}", user); // 更美观一些
+    let user2 = user.clone(); // clone 特质，是实例的方法，调用方式存在区别。同样 User 和 Race 都要实现
+    println!("{:#?}", user2);
+    // println!("{:#?}", user); // 没有实现 Copy，所有权没了。想要打印需把 String 注释掉并 derive
+    println!("{}", user == user2); // PartialEq 特质，需要 Race 实现等号判定
+}
+```

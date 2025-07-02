@@ -2,7 +2,7 @@
 base_url = "https://mxdzs0612.github.io/"
 title = "mxdzs0612的博客"
 description = "尝试重启博客中,当成笔记软件用的，无所谓有没有人看了～"
-taxonomies = [{name = "tags", feed = true}]
+taxonomies = [{ name = "tags", feed = true }]
 
 # Whether to automatically compile all Sass files in the sass directory
 compile_sass = true
@@ -21,6 +21,7 @@ theme = "tabi"
 highlight_code = true
 highlight_theme = "css"
 external_links_class = "external"
+bottom_footnotes = true
 
 [extra]
 # Choose the colourscheme (skin) for the theme. Default is "teal".
@@ -51,7 +52,7 @@ menu = [
     { name = "blog", url = "blog", trailing_slash = true },
     { name = "archive", url = "archive", trailing_slash = true },
     { name = "tags", url = "tags", trailing_slash = true },
-    { name = "projects", url = "projects", trailing_slash = true },
+    { name = "link", url = "link", trailing_slash = true },
     { name = "about", url = "about", trailing_slash = true },
 ]
 
@@ -70,22 +71,18 @@ feed_icon = true
 # If it's set to false, only the description or summary will be shown.
 full_content_in_feed = false
 # Decoding requires ~400 bytes of JavaScript. If JS is disabled, the email won't be displayed.
-encode_plaintext_email = true  # Setting is ignored if email is already encoded.
+encode_plaintext_email = true # Setting is ignored if email is already encoded.
 # Social media links for the footer.
 # Built-in icons: https://github.com/welpo/tabi/tree/main/static/social_icons
 # To use a custom icon, add it to your site's `static/social_icons` directory.
 socials = [
     { name = "github", url = "https://github.com/mxdzs0612/", icon = "github" },
 ]
-# Fediverse profile.
-# Adds metadata to feature the author's profile in Mastodon link previews.
-# Example: for @username@example.com, use:
-# fediverse_creator = { handle = "username", domain = "example.com" }
 # Extra menu to show on the footer, below socials section.
 footer_menu = [
-    {url = "about", name = "about", trailing_slash = true},
-    {url = "https://tabi-stats.osc.garden", name = "site_statistics", trailing_slash = true},
-    {url = "sitemap.xml", name = "sitemap", trailing_slash = false},
+    { url = "about", name = "about", trailing_slash = true },
+    { url = "https://tabi-stats.osc.garden", name = "site_statistics", trailing_slash = true },
+    { url = "sitemap.xml", name = "sitemap", trailing_slash = false },
 ]
 
 # Enable a copyright notice for the footer, shown between socials and the "Powered by" text.
@@ -105,10 +102,10 @@ repo_id = "R_kgDOO7d7qg"
 category = "General"
 category_id = "DIC_kwDOO7d7qs4Cr9Ci"
 mapping = "slug"
-strict_title_matching = 1  # 1 to enable, 0 to disable.
-enable_reactions = 1  # 1 to enable, 0 to disable.
+strict_title_matching = 1              # 1 to enable, 0 to disable.
+enable_reactions = 1                   # 1 to enable, 0 to disable.
 comment_box_above_comments = true
 light_theme = "noborder_light"
 dark_theme = "noborder_dark"
-lang = ""  # Leave blank to match the page's language.
+lang = ""                              # Leave blank to match the page's language.
 lazy_loading = true
