@@ -110,15 +110,14 @@ fn main() {
 use std::num::ParseIntError;
 
 fn find_first_even(numbers: Vec<i32>) -> Option<i32> {
-    // 这里 find 的返回值是一个 Option<&i32> 类型
     // 用了 ? 之后，在出现 None 或者 Err 时会立即返回
     let first_even = numbers.iter().find(|&num| num % 2 == 0)?;
     print!("Option");
-    // 必须解引用
+    // find 的返回值是一个 Option<&i32> 类型，需要解引用
     Some(*first_even)
 }
 
-// 传递错误的处理模式，可以把错误作为一种选择传到外部
+// 传递错误的处理模式，意思是可以把错误作为一种选择传到外部
 fn parse_numbers(input: &str) -> Result<i32, ParseIntError> {
     let val = input.parse::<i32>()?;
     Ok(val)
@@ -139,7 +138,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let numbers = vec![1, 3, 5];
     match find_first_even(numbers) {
         Some(number) => println!("first even {}", number),
-        None => println!("no such number"), // 此时并不会输出 find_first_even 里打印的 `Option`
+        None => println!("no such number"), // 由于 ? 立即返回，此时并不会输出 find_first_even 里打印的 `Option`
     }
 
     match parse_numbers("d") {
@@ -154,7 +153,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## 自定义错误类型
 1. 定义错误类型结构体。需要先创建一个结构体来表示错误类型，其中通常会包含一些字段来描述详细错误信息。
 2. 实现 Display 特质。`std::fmt::Display`特质可以定义如何展示错误信息，方便使错误能够以人类可读的方式打印出来。
-3. 实现 Error 特质。`std::error::Error`特质用于满足 Rust 错误处理机制的要求，以便在一层一层的错误之中互相传递，
+3. 实现 Error 特质。`std::error::Error`特质用于满足 Rust 错误处理机制的要求，以便把错误从内层函数抛出到外层。
 
 ***
 ### 例子
@@ -172,8 +171,9 @@ impl std::fmt::Display for MyError {
     }
 }
 
-// 可以不重写，有默认的
+// 可以不重写 description，有默认的
 impl std::error::Error for MyError {
+    // 注意 description 现在已 deprecated，官方建议使用 Display 或 to_string
     fn description(&self) -> &str {
         &self.detail
     }
@@ -193,7 +193,7 @@ fn main() -> Result<(), MyError> {
         Err(err) => println!("Error: {}", err),
     }
     func()?;
-    println!("oo"); // 错误时不会打印，如果想要完成传递，必须返回 Result<(), Box<dyn std::error::Error>>
+    println!("oo"); // 错误时不会打印，如果想要完成传递，main 函数必须返回 Result<(), Box<dyn std::error::Error>>
     Ok(())
 }
 ```
