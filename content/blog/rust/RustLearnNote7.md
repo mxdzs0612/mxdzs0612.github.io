@@ -160,9 +160,6 @@ fn main() {
 ## 特质对象和泛型
 泛型能够提供特质对象的另一种写法。
 
-<!-- {{ admonition(type="warning", icon="tip", title="注意", text="WIP") }} -->
-<!-- [^1]
-[^1]: This is the first footnote. -->
 ### 写法
 - 单个特质
   - impl 写法：可以是不同类型：`fn call(item1: &impl Trait, item2: &impl Trait);`
