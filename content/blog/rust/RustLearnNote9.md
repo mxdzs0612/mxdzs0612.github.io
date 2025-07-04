@@ -1,5 +1,5 @@
 +++
-title = "Rust 入门学习笔记（九）：闭包"
+title = "Rust 入门学习笔记（完）：闭包"
 slug = "rust_learn_note_9"
 date = 2025-07-03
 updated = 2025-07-04
@@ -32,7 +32,8 @@ struct User {
     name: String,
     score: u64,
 }
-// sort_by_key，一个原地排序方法
+// 不用闭包
+// sort_by_key 是一个内置原地排序方法
 fn sort_score(users: &mut Vec<User>) {
     users.sort_by_key(sort_helper);
 }

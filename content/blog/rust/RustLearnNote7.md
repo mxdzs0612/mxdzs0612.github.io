@@ -13,7 +13,7 @@ post_listing_date = "both"
 +++
 
 ## 特质
-特质（Traits）是一种定义方法签名的机制。
+特质（Traits，有的地方也翻译成特征）是一种定义方法签名的机制。
 
 特质允许提供一组方法的签名，但不提供具体实现。这些方法签名可以包括参数和返回类型，可选择提供或不提供默认实现（通常不提供）。
 
@@ -164,10 +164,11 @@ fn main() {
 - 单个特质
   - impl 写法：可以是不同类型：`fn call(item1: &impl Trait, item2: &impl Trait);`
   - 泛型写法：同一泛型必须是相同类型：`fn call_generic<T: Trait>(item1: &T, item2: &T);`
+> impl 写法是一种语法糖，实际上的完整写法是泛型写法，也常被称作**特质约束（Trait Bound）**
 - 多个特质
-  - `fn call(item1: &(impl Trait + AnotherTrait));`
-  - （推荐）`fn call_generic<T: Trait + AnotherTrait>(item1: &T);`
-  - （更推荐，清晰）`fn call_generic<T>(item: &T) where T: Trait + AnotherTrait,`
+  - 语法糖形式：`fn call(item1: &(impl Trait + AnotherTrait));`
+  - 特质约束（推荐）：`fn call_generic<T: Trait + AnotherTrait>(item1: &T);`
+  - where 约束（更推荐，清晰）：`fn call_generic<T>(item: &T) where T: Trait + AnotherTrait,`
 
 ***
 ### 例子

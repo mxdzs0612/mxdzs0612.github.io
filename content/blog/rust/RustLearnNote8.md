@@ -59,7 +59,7 @@ fn main() {
 ```
 
 ## 迭代器与迭代器特质
-<!-- {{ admonition(type="warning", icon="tip", title="注意", text="施工中") }} -->
+
 ### 特质 IntoIterator
 `IntoIterator`特质定义了一种将类型转换为迭代器的能力。
 
