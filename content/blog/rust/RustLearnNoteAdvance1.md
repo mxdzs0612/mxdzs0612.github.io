@@ -16,6 +16,8 @@ post_listing_date = "both"
 
 其实感觉进阶学习的第一篇不应该是智能指针，毕竟集合、IO 什么的都还没看。不过没办法，谁让我对这个最感兴趣呢，就先学它了。
 
+说实话我看完没有特别理解，还是要找点题做做。
+
 ## 智能指针
 
 ### 指针
@@ -32,7 +34,7 @@ Rust 最常见的指针是引用，裸指针被 Rust 判定为不安全，需要
 
 使用原始指针时，需要用`as`来标注类型以及可变/不可变。解引用则需要`unsafe`。
 
-> 也不需要太过恐惧要`unsafe`，如果确实有需要，该用就用。
+> 也不需要太过恐惧`unsafe`，如果确实有需要，该用就用。
 
 ```rust
 fn main() {
@@ -76,6 +78,9 @@ fn main() {
 ***
 ### 例子
 ```rust
+// 本例主要演示：
+// 如何循环调用自己
+// 构造 trait object
 trait Animal {
     fn eat(&self);
 }
@@ -106,4 +111,252 @@ fn main() {
 ```
 
 ## Rc 指针
-{{ admonition(type="warning", icon="tip", title="注意", text="施工中") }}
+Rc 指针也叫计数指针，位于`std::rc::Rc`下，是一个存储引用计数的指针。
+
+Rc 指针主要追踪两个方向：
+- 对单个值的多次引用
+- 何时销毁变量
+
+`Rc::clone`会创建一个新的引用，让 Rc 计数加一。
+
+```rust
+// 本例主要演示：
+// 所有权 move
+// “强”计数
+use std::rc::Rc;
+
+#[derive(Debug)]
+struct Cat {}
+
+fn main() {
+    let cat1 = Cat {};
+    let cat2 = Cat {};
+    let cat3 = Cat {};
+
+    // 如果 cat 是一个原始类型，这么写是可以的
+    // let cat_vec1 = vec![cat1, cat2];
+    // let cat_vec2 = vec![cat2, cat3];
+    // println!("{:?}", cat_vec1);
+
+    let cat1 = Rc::new(Cat {});
+    let cat2 = Rc::new(Cat {});
+    let cat3 = Rc::new(Cat {});
+
+    let cat_vec1 = vec![cat1, Rc::clone(&cat2)];
+    // cat2 count++
+    let cat_vec2 = vec![cat2, cat3];
+    // cat2 销毁
+    println!("{:?}", cat_vec1);
+    println!("{:?}", cat_vec2);
+    // println!("{:?}", cat2);
+
+        let cat1 = Rc::new(Cat {});
+    let cat2 = Rc::new(Cat {});
+    let cat3 = Rc::new(Cat {});
+
+    let cat_vec1 = vec![cat1, Rc::clone(&cat2)];
+    // cat2 count++
+    let cat_vec2 = vec![Rc::clone(&cat2), cat3];
+    // cat2 销毁
+    println!("{:?}", cat_vec1);
+    println!("{:?}", cat_vec2);
+    println!("{}", Rc::strong_count(&cat2)); // 3， let 一次，两个 clone 各一次
+    std::mem::drop(cat_vec2);
+    println!("{}", Rc::strong_count(&cat2)); // 2
+}
+```
+
+## Cell 与 RefCell
+Cell 与 RefCell 用于内部可变性，他们带来了灵活性但同时也造成了一些安全隐患。
+
+Cell 只适用于 Copy 类型，用于提供值，而 RefCell 用于提供引用。
+
+### RefCell
+RefCell 会造成 panic。
+
+RefCell 在编译期不会报错，应慎重使用。
+
+***
+### 例子
+```rust
+// 本例主要演示：
+// 两种指针区别
+// RefCell 编译时不报错
+use std::cell::{Cell, RefCell};
+
+fn main(){
+    // Cell
+    let c = Cell::new("old");
+    let c1: &str = c.get();
+    println!("{c1}"); // old
+    c.set("new");
+    let c2: &str = c.get();
+    println!("{c1} {c2}"); // old new
+    let c = Cell::new(String::from("rust"));
+    // println!("{:?}", c); // 不能打印
+    // let c3 = c.get(); // 不能 get
+
+    // RefCell
+    let rc = RefCell::new(String::from("rust"));
+    let r1 = rc.borrow();
+    println!("{}", r1); // rust
+    // 注意必须重新 new 一个，同一个 rc 不能同时有不可变和可变引用
+    // 但是编译时不会报错，在运行时才会报出来
+    let rc = RefCell::new(String::from("rust"));
+    let mut r2 = rc.borrow_mut();
+    r2.push_str(" new");
+    println!("{}", r2); // rust new
+}
+```
+
+## Weak 指针
+Weak 指针是指持有对分配数据的**非拥有**引用的指针。
+
+与之相对，Rc 指针是拥有所有权的。
+
+Weak 指针主要用于解决 Rc 指针的循环引用（Reference Cycle）问题。
+
+### 相互转换
+- Rc -> Weak：`Rc::upgrade`
+- Weak -> Rc：`Rc::downgrade`
+
+Weak 同样也有引用计数，可以通过`weak_count()`查看。
+
+***
+### 例子
+```rust
+// 本例主要演示：
+// Weak 和 Rc 配合
+// 什么叫解决循环引用
+// 循环引用就是：比如说 A 是 B 的父母，B 是 A 的孩子，为了表示这一关系，就会存在 A 调用 B，B 调用 A。
+use std::{cell::RefCell, rc::{Rc, Weak}};
+
+#[derive(Debug)]
+struct People {
+    age: usize,
+    parent: RefCell<Weak<People>>,
+    children: RefCell<Vec<Rc<People>>>,
+}
+
+fn main(){
+    let son = Rc::new(People{
+        age: 10,
+        parent: RefCell::new(Weak::new()),
+        children: RefCell::new(vec![]),
+    });
+    println!("son parent = {:?}", son.parent.borrow()); // (Weak)
+    println!("son parent = {:?}", son.parent.borrow().upgrade()); // None，因为没有设置双亲
+    println!("{} {}", Rc::strong_count(&son), Rc::weak_count(&son)); // 1 0
+
+    let father = Rc::new(People{
+        age: 40,
+        parent: RefCell::new(Weak::new()),
+        children: RefCell::new(vec![Rc::clone(&son)]),
+    });
+    // son 被克隆所以强引用 + 1
+    println!("{} {}", Rc::strong_count(&son), Rc::weak_count(&son)); // 2 0
+
+    // 设置父母，因为 parent 是 Weak 所以需要降级
+    *son.parent.borrow_mut() = Rc::downgrade(&father);
+    // 如果 parent 是 Rc，这里会无限循环
+    // Weak 就能够防止再被打开
+    println!("son parent = {:?}", son.parent.borrow().upgrade()); // Some(People { age: 40, parent: RefCell { value: (Weak) }, children: RefCell { value: [People { age: 10, parent: RefCell { value: (Weak) }, children: RefCell { value: [] } }] } })
+
+    println!("{} {}", Rc::strong_count(&son), Rc::weak_count(&son)); // 2 0
+    println!("{} {}", Rc::strong_count(&father), Rc::weak_count(&father)); // 1 1
+}
+```
+
+## Arc 指针
+Rc 指针不支持 Send 和 Sync 特质，在多线程环境下会产生数据竞争（Data Race）。
+
+Arc 实现了引用计数的原子化操作，是线程安全的，但会带来较大性能损耗。
+
+Arc 位于`std::sync::Arc`下，注意这个包里同样存在`std::sync::Weak`。
+
+***
+### 例子
+```rust
+// 把 rc 移植到多线程上
+use std::{clone, sync::{Arc, Weak}, thread::{self, Thread}};
+
+#[derive(Debug)]
+struct Owner {
+    name: String,
+}
+
+#[derive(Debug)]
+struct Dog {
+    owner: Arc<Owner>,
+}
+
+fn main() {
+    let someone = Arc::new(Owner{
+        name: "tom".to_string(),
+    });
+    for i in 0..10 {
+        let someone = Arc::clone(&someone);
+        let join_handle = thread::spawn(move || {
+            let yellow = Arc::new(Dog{
+                owner: Arc::clone(&someone),
+            });
+            let black = Arc::new(Dog{
+                owner: Arc::clone(&someone),
+            });
+            println!("yellow owner {}", yellow.owner.name);
+            println!("black owner {}", black.owner.name);
+            println!("Thread {i} end");
+        });
+    }
+}
+```
+
+## Mutex
+想要加入可变的功能就需要 Mutex。
+
+可变不可变是编译器对引用的附加限制，使用可变会增加性能损耗。
+
+***
+### 例子
+```rust
+use std::{clone, sync::{Arc, Mutex, Weak}, thread::{self, Thread}};
+
+#[derive(Debug)]
+struct Owner {
+    name: String,
+    dogs: Mutex<Vec<Weak<Dog>>>,
+}
+
+#[derive(Debug)]
+struct Dog {
+    name: String,
+    owner: Arc<Owner>,
+}
+
+fn main() {
+    let someone = Arc::new(Owner{
+        name: "tom".to_string(),
+        dogs: Mutex::new(vec![]),
+    });
+    let yellow = Arc::new(Dog{
+        name: "yel".to_string(),
+        owner: Arc::clone(&someone),
+    });
+    let black = Arc::new(Dog{
+        name: "blc".to_string(),
+        owner: Arc::clone(&someone),
+    });
+    for i in 0..10 {
+        let someone = Arc::clone(&someone);
+        let yellow = Arc::clone(&yellow);
+        let black = Arc::clone(&black);
+        let join_handle = thread::spawn(move || {
+            let mut guard = someone.dogs.lock().unwrap();
+            guard.push(Arc::downgrade(&yellow));
+            guard.push(Arc::downgrade(&black));
+            println!("{} {}", guard[0].upgrade().unwrap().name, guard[1].upgrade().unwrap().name);
+            println!("Thread {i} end");
+        });
+    }
+}
+```
