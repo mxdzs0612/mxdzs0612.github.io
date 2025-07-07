@@ -12,3 +12,5 @@ template = "info-page.html"
 [凯森-编程小梦](https://blog.bcmeng.com/)
 
 [胡争](https://openinx.github.io/)
+
+[chr](https://blog.chrxw.com/) Steam 玩家可能比较熟悉

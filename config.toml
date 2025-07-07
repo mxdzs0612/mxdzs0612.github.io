@@ -81,7 +81,7 @@ socials = [
 # Extra menu to show on the footer, below socials section.
 footer_menu = [
     { url = "about", name = "about", trailing_slash = true },
-    { url = "https://tabi-stats.osc.garden", name = "site_statistics", trailing_slash = true },
+    { url = "privacy", name = "privacy", trailing_slash = true },
     { url = "sitemap.xml", name = "sitemap", trailing_slash = false },
 ]
 

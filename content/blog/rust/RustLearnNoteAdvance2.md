@@ -2,7 +2,7 @@
 title = "Rust 进阶学习笔记（二）：复合数据类型"
 slug = "rust_learn_note_adv_2"
 date = 2025-07-05
-updated = 2025-07-05
+updated = 2025-07-07
 description = "字符串与切片，元组数组，数组、双向数组和链表，键值对和Map"
 # draft = true
 [taxonomies]
@@ -12,7 +12,7 @@ pinned = false
 post_listing_date = "both"
 +++
 
-出处：原子之音 [视频](https://www.bilibili.com/video/BV1r34y1G7b7/) [代码](https://gitlab.com/yzzy/compound_types)
+本节出处：原子之音 [视频](https://www.bilibili.com/video/BV1r34y1G7b7/) [代码](https://gitlab.com/yzzy/compound_types)
 
 ## 概述
 复合数据类型（Compound types）通过组合基础数据类型，来表达更复杂的数据结构。也就是使用其他类型定义的类型。
@@ -33,10 +33,149 @@ post_listing_date = "both"
 - HashSet, BTreeSet
 
 ## 字符串与字符串切片
-（WIP）
+
+### 字符串
+Rust 中 String 的源码如下：
+```rust,name=string.rs
+#[derive(PartialEq, PartialOrd, Eq, Ord)]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[lang = "String"]
+pub struct String {
+    vec: Vec<u8>,
+}
+```
+可以看到，rust 中的字符串被设计成一个内容为 u8 可变数组的结构体，其中 u8 是一个无符号整型，可以表示 0～255 之间的数字。
+
+#### 二进制到字符串
+从二进制数组到字符串的过程，需要解决两个问题：
+1. 字符串什么时候结束
+   1. 存储结束符号（C 语言，非常不安全）
+   2. 在开头存储字符串长度（Rust）
+2. 采用什么编码
+   1. ASCII 一个字节对应一个字符，可以表示常用的 256 个字符
+   2. UTF-8 一到四个四届对应一个字符，可以辨识所有语言的字符，且可以和 ASCII 兼容。
+
+因为一个字节就是一个 8 位二进制数，所以 String 才使用了 u8。
+
+#### Rust 字符串
+- 在开头存储字符串长度
+- 所有都是 UTF-8
+- 默认不可变
+
+#### string_item
+存储了（详见下文 Vec 源码）：
+- pointer：字符串头一个字符的地址
+- length：具体字符个数
+- capacity：容量，扩容一般会翻倍
+
+### 字符串切片
+str 就是字符串切片，实际上是 [u8] 数组切片，也就是动态大小的 UTF-8 字节。
+
+str 在 rust 中无法直接使用(str 是不安全的)，经常用的是`&str`，以及`Box<str>`、`Rc<str>`等智能指针。
+
+#### 区别
+String 具有所有权，&str 是切片引用。
+
+String 的数据必须存储在堆上，&str 则根据引用指向，可能存储在堆上、栈上甚至数据段上。
+
+在创建需要所有权的字符串、有修改需求时，使用 String；在查找、只读，以及不需要关心生命周期时，使用 &str。
+
+***
+### 例子
+```rust
+// String 和 &str 的区别与相互转换
+// 如何通过 &[u8] 转换为 String
+// &str 与生命周期
+
+fn rust_say() -> &'static str {
+    // 不加转义的写法
+    r#"Rust said "str" is danger"#
+}
+
+// 调用第三库经常遇到 &[u8] -> String
+fn u8_to_string(string_data: &[u8]) -> String {
+    // String::from_utf8_lossy(string_data).to_string()
+    // u8 可以强制转换成 char
+    string_data.iter().map(|&s|s as char).collect()
+}
+
+fn main() {
+    // 创建空字符串
+    let mut item = String::new();
+    println!("String {}: cap {}", item, item.capacity()); // "" 0
+    item.push('c');
+    println!("String {}: cap {}", item, item.capacity()); // "c" 8
+    // 创建带容量的字符串
+    let item = String::with_capacity(10);
+    println!("String {}: cap {}", item, item.capacity()); // "" 10 
+
+    // &str -> String 
+    let item = String::from("hello world");
+    println!("String {}: cap {}", item, item.capacity());
+    let item = "hello world".to_string();
+    println!("String {}: cap {}", item, item.capacity());
+    // String -> &str
+    let i = &item;
+    // str 声明生命周期，一般都是静态的
+    println!("{}", rust_say());
+    // &str 引用的创建方式
+    const C_S: &str = "";
+    let yzzy = "yzzy";
+    // &str => &u8 => String
+    println!("u8 to String: {}", u8_to_string(yzzy.as_bytes()));
+
+    // 尝试直接打印 &u8
+    for item in yzzy.as_bytes() {
+        println!("item {}", item); // 打印的是数字 121 122 122 121
+    }
+
+}
+```
 
 ## 元组和数组
-（WIP）
+元组可以包含各种类型值的组合，数组只能包含统一类型数据的组合。
+
+默认不可变。
+
+```rust
+fn u8_to_string(string_data: &[u8]) -> String {
+    string_data.iter().map(|&s|s as char).collect()
+}
+
+#[derive(Debug)]
+struct User{
+    name: String,
+    age: i32,
+}
+
+fn main() {
+    // 创建元组
+    let tup = (1,2,"hello", User{name: "y".to_owned(), age: 45});
+    // 取元组中的值
+    println!("tup {} {} {} {:?}",tup.0, tup.1, tup.2, tup.3 );
+    // 元组中值可以命名
+    let (a, b, c, d) = tup;
+    println!("a {} b {} c {} d {:#?}", a, b, c, d);
+
+    // 创建数组
+    let my_array = [1,2,3,4];
+    // let my_array: [i32;4] = [1,2,3,4]; // 类型;容量
+    // let my_array: [i32;3] = [1, 2, 3];
+    // 数组切片只能传引用，否则报错 doesn't have a size known at compile-time
+    let my_slice = &my_array[1..3];
+    // 没有容量，只能获得长度
+    println!("my_array len {}", my_array.len());
+    println!("my_slice len {}", my_slice.len());
+    
+    // u8;4
+    let u8_array = [121u8, 122u8, 122u8, 121u8];
+    // &u8
+    let u8_slice_ref = &u8_array[0..4]; //&[u8]
+    // u8_slice_ref 和 &u8_array是没有区别的，不需要区分数组引用和切片引用
+    println!("{:#?}", u8_to_string(&u8_array));
+    println!("{:#?}", u8_to_string(u8_slice_ref));
+}
+```
 
 ## 序列类型
 
@@ -284,5 +423,175 @@ fn main() {
 }
 ```
 
-## 字典型 Map
-{{ admonition(type="warning", icon="tip", title="注意", text="施工中") }}
+## 键值对 Map
+键值对又称为字典数据类型，主要是为了查找创建的数据结构。
+
+### HashMap
+HashMap<K, V> 类型存储了一个键类型 K 和一个值类型 V 的映射。他通过一个哈希函数（Hash Function，也叫散列函数）来决定如何存储键和值，实现映射。
+
+HashMap 和 Vec 一样，数据也在堆上。
+
+HashMap 无序的。
+
+#### 用途
+- 仅次于 Vec 的第二选择
+- 存储映射关系
+- 要求较快查找速度（O(1)）
+- 需要内存缓存
+
+#### 键
+HashMap 对键有特殊要求，即必须满足哈希函数。
+
+所以需要实现`Hash`、`Eq`、`PartialEq`等特质。
+
+对于普通的结构体，可以通过增加`#[derive(Debug, Hash, Eq, PartialEq)]`自动实现。
+
+***
+#### 例子
+```rust
+use std::collections::HashMap;
+
+// Hash Eq PartialEq
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct Car {
+    id: i32,
+    price: i32
+}
+
+fn main() {
+    // 创建需要指定键值的类型
+    let _int_map:HashMap<i32, i32> = HashMap::new();
+    let _int_map:HashMap<i32, i32> = HashMap::with_capacity(10);
+    
+    // 通过数组来创建map
+    let mut car_map = HashMap::from([
+        ("Car1", Car{id: 1, price: 10000}),
+        ("Car2", Car{id: 2, price: 4000}),
+        ("Car3", Car{id: 3, price: 890000}),
+    ]);
+    // 无序，每次打印结果不一定相同
+    for (k, v) in &car_map {
+        println!("{k}:{:?}", v);
+    }
+    // 查找值 get，返回的是 Some 或者 None
+    println!("Some {:?}", car_map.get("Car1"));
+    println!("None {:?}", car_map.get("Car6"));
+    // 覆盖型插入 insert
+    car_map.insert("Car4", Car { id: 4, price: 80000 });
+    println!("{:?}", car_map);
+    car_map.insert("Car4", Car { id: 5, price: 300000 });
+    println!("{:?}", car_map);
+    // 只在键没有时才能插入 entry or_insert
+    car_map.entry("Car4").or_insert(Car{id: 9, price: 9000});
+    println!("{:?}", car_map); //没写成功
+    // 删除 remove
+    car_map.remove("Car4");
+    println!("{:?}", car_map);
+    car_map.entry("Car4").or_insert(Car{id: 9, price: 9000});
+    println!("{:?}", car_map); //写成功
+
+    // 将结构体作为键存储
+    let mut car_map = HashMap::from([
+        (Car{id: 1, price: 10000}, "Car1"),
+        (Car{id: 2, price: 4000}, "Car2"),
+        (Car{id: 3, price: 890000}, "Car3"),
+    ]);
+
+    println!("Car2: {:?}\n", car_map.get(&Car{id: 1, price:10000}));
+
+    for (car, name) in &car_map {
+        println!("{:?}: {name}", car)
+    }
+
+    // Filter
+    car_map.retain(|c, _| c.price < 5000);
+    println!("< 5000  {:?}", car_map);
+}
+```
+
+### BTreeMap
+BTreeMap 是一种有序形式的键值对，内部基于 BTree 构建。
+
+#### 用途
+- 需要有序 map
+- 查找时可以通过二分提高性能
+- 有序的代价：缓存效率和查找性能的折中
+
+#### 键
+因为需要排序，所以 BTreeMap 需要实现`Ord`、`PartialOrd`。
+
+***
+#### 例子
+```rust
+use std::collections::BTreeMap;
+
+// Hash Eq PartialEq
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct Car {
+    id: i32,
+    price: i32
+}
+// 手动实现比较特质
+impl Ord for Car {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.price.cmp(&other.price)
+    }
+}
+// 返回的是 Some
+impl PartialOrd for Car {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.price.cmp(&other.price))
+    }
+}
+
+fn main() {
+    // 创建
+    let _int_map:BTreeMap<i32, i32> = BTreeMap::new();
+    // 树没有办法预留空间
+    // let _int_map:BTreeMap<i32, i32> = BTreeMap::with_capacity(10);
+    
+    // 通过数组来创建map
+    let mut car_map = BTreeMap::from([
+        ("Car1", Car{id: 1, price: 10000}),
+        ("Car2", Car{id: 2, price: 4000}),
+        ("Car3", Car{id: 3, price: 890000}),
+    ]);
+    println!("{:#?}", car_map); // 有序，id 越小越靠前
+
+    let mut car_map = BTreeMap::from([
+        (Car{id: 1, price: 10000}, 1),
+        (Car{id: 2, price: 4000}, 2),
+        (Car{id: 3, price: 890000}, 3),
+    ]);
+    for (k, v) in &car_map {
+        println!("{:?}: {v}", k); // 有序，price 越小越靠前
+    }
+    // 插入，动态有序
+    car_map.insert(Car{id: 4, price: 90000}, 4);
+    for (k, v) in &car_map {
+        println!("{:?}: {v}", k);
+    }
+    // 查找
+    println!("{:?}", car_map.get(&Car{id: 1, price: 10000}));
+    // 可以查找第一个或最后一个键
+    println!("{:?}", car_map.first_key_value());
+    println!("{:?}", car_map.last_key_value());
+
+    // 删除，注意返回值是 Option 元组，即完整键值
+    let car = car_map.pop_first().unwrap();
+    println!("{:?}", car);
+    let car = car_map.pop_last().unwrap();
+    println!("{:?}", car);
+    for (k, v) in &car_map {
+        println!("{:?}: {v}", k);
+    }
+    // 删除固定 index，性能较差不建议用
+    car_map.remove(&Car{id: 1, price: 10000});
+    for (k, v) in &car_map {
+        println!("{:?}: {v}", k);
+    }
+    // 清空，并判断是否为空
+    car_map.clear();
+    println!("{}", car_map.is_empty());
+}
+````
