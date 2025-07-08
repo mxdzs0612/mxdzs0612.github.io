@@ -3,6 +3,7 @@ title = "Rust 学习笔记"
 template = "series.html"
 sort_by = "slug"
 transparent = true
+paginate_by = 10
 
 [extra]
 series = true

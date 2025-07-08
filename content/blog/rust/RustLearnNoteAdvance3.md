@@ -12,7 +12,7 @@ pinned = false
 post_listing_date = "both"
 +++
 
-出处：原子之音 [视频](https://www.bilibili.com/video/BV1jf4y1p7BV/)
+本节出处：原子之音 [视频](https://www.bilibili.com/video/BV1jf4y1p7BV/)
 
 ## 基本操作
 Rust 主要通过`std::fs::File`来实现文件操作。
@@ -123,7 +123,6 @@ fn main() -> std::io::Result<()> {
 ```
 
 ### 路径操作
-<!-- {{ admonition(type="warning", icon="tip", title="注意", text="施工中") }} -->
 rust 路径操作都在`std::fs`下，包括`create_dir`、`remove_dir`等。
 
 下面例子[出处](https://doc.rust-lang.org/nightly/rust-by-example/zh/std_misc/fs.html)。
