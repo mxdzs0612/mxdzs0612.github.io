@@ -13,4 +13,8 @@ template = "info-page.html"
 
 [胡争](https://openinx.github.io/)
 
-[chr](https://blog.chrxw.com/) Steam 玩家可能比较熟悉
+***
+
+[MingGH](https://runnable.run/blog) 996.ninja 站长，摸鱼佬
+
+[chr](https://blog.chrxw.com/) Steam 玩家可能比较熟悉，[ASFEnhance](https://github.com/chr233/ASFEnhance) 作者
