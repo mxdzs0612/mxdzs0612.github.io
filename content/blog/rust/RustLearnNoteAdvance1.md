@@ -176,7 +176,7 @@ fn main() {
 ```
 
 ## Cell 与 RefCell
-Cell 与 RefCell 用于内部可变性，他们带来了灵活性但同时也造成了一些安全隐患。
+Cell 与 RefCell 用于内部可变性，它们带来了灵活性但同时也造成了一些安全隐患。
 
 Cell 只适用于 Copy 类型，用于提供值，而 RefCell 用于提供引用。
 

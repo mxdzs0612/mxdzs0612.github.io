@@ -191,7 +191,7 @@ impl<T> Stack<T> {
         self.items.iter_mut()
     }
     // 注意返回值，另外两个是 slice，这个是 vec
-    // 不建议修改 into_iter 函数的命名，因为他会转移所有权，容易让使用者迷茫
+    // 不建议修改 into_iter 函数的命名，因为它会转移所有权，容易让使用者迷茫
     fn into_iter(self) -> std::vec::IntoIter<T> {
         self.items.into_iter()
     }
