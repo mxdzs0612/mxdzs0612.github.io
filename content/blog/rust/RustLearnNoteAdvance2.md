@@ -44,7 +44,7 @@ pub struct String {
     vec: Vec<u8>,
 }
 ```
-可以看到，rust 中的字符串被设计成一个内容为 u8 可变数组的结构体，其中 u8 是一个无符号整型，可以表示 0～255 之间的数字。
+可以看到，Rust 中的字符串被设计成一个内容为 u8 可变数组的结构体，其中 u8 是一个无符号整型，可以表示 0～255 之间的数字。
 
 #### 二进制到字符串
 从二进制数组到字符串的过程，需要解决两个问题：
@@ -71,7 +71,7 @@ pub struct String {
 ### 字符串切片
 str 就是字符串切片，实际上是 [u8] 数组切片，也就是动态大小的 UTF-8 字节。
 
-str 在 rust 中无法直接使用(str 是不安全的)，经常用的是`&str`，以及`Box<str>`、`Rc<str>`等智能指针。
+str 在 Rust 中无法直接使用(str 是不安全的)，经常用的是`&str`，以及`Box<str>`、`Rc<str>`等智能指针。
 
 #### 区别
 String 具有所有权，&str 是切片引用。
@@ -241,7 +241,7 @@ fn main() {
     // 增：push
     let mut cars = Vec::new();
     for i in 1..11 {
-        // rust 没有三元表达式
+        // Rust 没有三元表达式
         let car_type = if i % 2 == 0 {"car"} else {"bus"};
         cars.push(Car {
             id: i,

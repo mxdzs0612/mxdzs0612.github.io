@@ -123,7 +123,7 @@ fn main() -> std::io::Result<()> {
 ```
 
 ### 路径操作
-rust 路径操作都在`std::fs`下，包括`create_dir`、`remove_dir`等。
+Rust 路径操作都在`std::fs`下，包括`create_dir`、`remove_dir`等。
 
 下面例子[出处](https://doc.rust-lang.org/nightly/rust-by-example/zh/std_misc/fs.html)。
 ```rust
