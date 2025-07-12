@@ -2,7 +2,7 @@
 title = "Rust 进阶学习笔记（五）：包，模块与Cargo指南"
 slug = "rust_learn_note_adv_5"
 date = 2025-07-09
-updated = 2025-07-10
+updated = 2025-07-14
 description = "项目及其目录结构，包，模块，模块的引入与模块可见性，包的构建，依赖的添加，cargo配置和清单，工作空间，条件编译，发布配置"
 # draft = true
 [taxonomies]
@@ -342,4 +342,4 @@ pub mod a {
 
 
 
-{{ admonition(type="warning", icon="tip", title="注意", text="施工中") }}
+{{ admonition(type="warning", icon="warning", title="注意", text="施工中") }}
