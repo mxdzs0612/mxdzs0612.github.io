@@ -3,7 +3,7 @@ title = "Rust 入门学习笔记（二）：所有权与复杂类型"
 slug = "rust_learn_note_2"
 date = 2025-06-24
 updated = 2025-06-27
-description = "所有权与复杂类型，结构体，枚举"
+description = "所有权与字符串，结构体，枚举"
 [taxonomies]
 tags = ["Rust", "Learn"]
 [extra]

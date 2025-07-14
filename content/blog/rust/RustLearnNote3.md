@@ -3,7 +3,7 @@ title = "Rust 入门学习笔记（三）：流程控制与函数"
 slug = "rust_learn_note_3"
 date = 2025-06-28
 updated = 2025-06-30
-description = "流程控制，循环，函数，参数传递，函数所有权，高级函数"
+description = "流程控制，循环，函数，参数传递，函数所有权，高阶函数"
 [taxonomies]
 tags = ["Rust", "Learn"]
 [extra]

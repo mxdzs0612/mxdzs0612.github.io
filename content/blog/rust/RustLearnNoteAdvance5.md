@@ -2,7 +2,7 @@
 title = "Rust 进阶学习笔记（五）：包，模块与Cargo指南"
 slug = "rust_learn_note_adv_5"
 date = 2025-07-09
-updated = 2025-07-14
+updated = 2025-07-12
 description = "项目及其目录结构，包，模块，模块的引入与模块可见性，包的构建，依赖的添加，cargo配置和清单，工作空间，条件编译，发布配置"
 # draft = true
 [taxonomies]
@@ -13,6 +13,8 @@ post_listing_date = "both"
 +++
 
 本节出处：[圣经：包和模块](https://course.rs/basic/crate-module/intro.html) [圣经：Cargo](https://course.rs/cargo/intro.html)
+
+***
 
 当工程规模变大时，把代码写到一个甚至几个文件中，都是不太聪明的做法。反之，将大的代码文件拆分成包和模块，还允许我们实现代码抽象和复用。因此，跟其它语言一样，Rust 也提供了代码的组织管理的方式。
 
@@ -340,6 +342,4 @@ pub mod a {
 
 ## Cargo
 
-
-
-{{ admonition(type="warning", icon="warning", title="注意", text="施工中") }}
+{{ admonition(type="warning", icon="warning", title="注意", text="内容太多信息密度太低，看完不想写了，已 TJ") }}

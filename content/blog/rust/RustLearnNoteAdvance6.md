@@ -14,6 +14,8 @@ post_listing_date = "both"
 
 本节出处：[圣经 Unsafe](https://course.rs/advance/unsafe/intro.html)
 
+***
+
 几乎每个语言都有`unsafe`关键字，但 Rust 语言使用`unsafe`的原因可能与其它编程语言还有所不同。
 
 `unsafe`存在的主要是 Rust 的静态检查太强且保守，这就会导致当编译器在分析代码时，一些正确代码会因为编译器无法分析出它的所有正确性，结果将这段代码拒绝，导致编译错误。尤其是涉及到所有权规则时，编译器检查是很难绕过的。这种时候就可以使用`unsafe`，此时需要程序员承担编译器的职责，对代码正确性负责。
@@ -268,4 +270,6 @@ pub extern "C" fn call_from_c() {
 因此，为了让 Rust 函数能顺利被其它语言调用，我们必须要禁止掉该功能。
 
 ## 内联汇编
-{{ admonition(type="danger", title="危！", text="汇编忘光了，这节没看懂，哪天看懂了再回来补") }}
+内联汇编（Inline assembly）的意思是将汇编语言内嵌在高级语言的代码中，Rust 是支持内联汇编的。
+
+{{ admonition(type="danger", title="危！", text="汇编忘光了，这章看的一头雾水，哪天理解了再回来补吧") }}
