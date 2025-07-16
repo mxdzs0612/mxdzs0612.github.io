@@ -12,13 +12,15 @@ pinned = false
 post_listing_date = "both"
 +++
 
-本节出处：[圣经：包和模块](https://course.rs/basic/crate-module/intro.html) [圣经：Cargo](https://course.rs/cargo/intro.html)
+本节出处：[圣经-2.12包和模块](https://course.rs/basic/crate-module/intro.html) [圣经-4.10Cargo](https://course.rs/cargo/intro.html)
+
+从这节开始，每节的内容开始多了起来，我也做不到日更了。水温逐渐升高了！
 
 ***
 
 当工程规模变大时，把代码写到一个甚至几个文件中，都是不太聪明的做法。反之，将大的代码文件拆分成包和模块，还允许我们实现代码抽象和复用。因此，跟其它语言一样，Rust 也提供了代码的组织管理的方式。
 
-Cargo 是包管理工具，可以用于依赖包的下载、编译、更新、分发等。Cargo 依赖 [crates.io](https://crates.io/)，它是社区提供的包注册中心：用户可以将自己的包发布到该注册中心，然后其它用户通过注册中心引入该包。可以理解成 maven 中央仓库。另有一个网站 [lib.rs](https://lib.rs/) 非常适合用来查找包。
+Cargo 是包管理工具，可以用于依赖包的下载、编译、更新、分发等。Cargo 依赖 [crates.io](https://crates.io/)，它是社区提供的包注册中心：用户可以将自己的包发布到该注册中心，然后其它用户通过注册中心引入该包。可以理解成 maven 中央仓库。另有一个网站 [lib.rs](https://lib.rs/) 非常适合用来查找包（不过这网站的访问速度比较感人）。
 
 本节中，我们会仔细学习这些概念，目的是搞清楚一个项目结构的方方面面。这一节乍一看十分基础，其他语言也都有类似的东西，实际上非常重要，能让我们从代码之外进一步理解 Rust。
 
@@ -285,14 +287,15 @@ pub fn eat_at_restaurant() {
 ##### 简化引入
 可以使用`{}`来一起引入具有相同前缀的模块，大量减少`use`的使用。
 ```rust
-// 前
 use std::collections::HashMap;
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 
 use std::io;
 use std::io::Write;
-//后，注意这个 self，可用来替代模块自身
+```
+上面五行可以压缩到两行。注意这个 self，可用来替代模块自身
+```rust
 use std::collections::{HashMap,BTreeMap,HashSet};
 use std::io::{self, Write};
 ```

@@ -12,5 +12,5 @@ pinned = false
 post_listing_date = "both"
 +++
 
-本节出处：[圣经 错误处理](https://course.rs/advance/errors.html)
+本节出处：[圣经-4.8错误处理](https://course.rs/advance/errors.html)
 

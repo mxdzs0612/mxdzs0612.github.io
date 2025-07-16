@@ -19,7 +19,7 @@ post_listing_date = "both"
 [Rust语言圣经-4.10宏编程](https://course.rs/advance/macro.html)
 [^1]
 
-这一节写的比较粗糙，等我学完 Workshop 后会重新整理的。
+这一节写的比较粗糙，等我学完 Workshop 后会重新整理的。不过宏其实没必要看的这么细，很少能够用到这么原理层面的东西。
 
 ## 宏
 之前已经遇到过很多带有`!`的东西，比如`println!`、`vec!`等，以及一些`#[derive]`。这些东西就叫做宏。
@@ -35,7 +35,7 @@ post_listing_date = "both"
 
 Rust 整体编译过程就是图中间“编译前端”`Rustc`到“编译后端”`LLVM`这一部分。我们的文本代码会经过分词形成词条流（即词法分析），这一过程中就会解析宏。词法分析后会形成一个抽象语法树（AST），然后进行语义分析。HIR 是 AST 简化后的降级，进行语法糖的“脱糖”，做类型推断。MIR 是进一步降级形成中级中间语言，会进行借用检查。最后生成一个 LLVM 的中间语言。
 
-可以从 [Rust 官方 Playground](https://play.rust-lang.org/) 的左上角清晰看到整个过程生成的代码是什么样的。
+可以从 [Rust 官方 Playground](https://play.rust-lang.org/) 左上角的编译选项中清晰看到整个过程每一步生成的代码是什么样的。
 
 宏的解析器是主线之外单独的，并且声明宏和过程宏也是分开的。声明宏实际上是一个**替换**，替换会发生在声明层面，然后混入普通的 token stream 里面，这个过程可以理解为和正则表达式匹配是一样的，没有计算和语义分析。过程宏的工作机制也类似，但是其出入参都是 token stream，在 token stream 上通过第三方库 Syn 构造了一个自己的 AST，其目的是方便根据类型信息进行一些计算，最后会转换为普通的 token stream。
 
@@ -79,7 +79,7 @@ macro_rules! vec {
 
 我们创建的数组中，这个模式就是被匹配并循环了 3 次。
 
-> 注意这种写法，数组最后一个元素后不能再跟`,`。想要能够匹配这种可有可无的逗号，需要这样写：
+> 注意这种写法，数组最后一个元素后不能再跟`,`。想要能够匹配这种*可有可无*的逗号，需要这样写：
 ```rust
 ($($x:expr),+ $(,)?) => (
     <[_]>::into_vec(
@@ -115,7 +115,7 @@ macro_rules! vec {
 ### 定义过程宏
 直接来看几个例子。
 
-首先需要在宏定义所在的包，比如`my_macro`里的`Cargo.toml`中定义`proc-macro=true`，然后添加三个依赖包。这是属性宏用到的，定义其他宏可能并不需要全部的三个包。过程宏编译器依赖这三个包来进行转换。
+首先需要在宏定义所在的包，比如`my_macro`里的`Cargo.toml`中定义`proc-macro=true`，然后添加三个依赖包。这里的三个包是属性宏用到的，定义其他宏可能并不需要全部的三个包。过程宏编译器依赖这三个包来进行转换。Rust 有很多内置的功能都是像这样，不属于标准库 std，而是通过官方提供的外部 crate 来实现。
 ```toml,name=my_macro/Cargo.toml
 [package]
 name = "my_macro"
@@ -126,7 +126,7 @@ edition = "2024"
 proc-macro=true
 
 [dependencies]
-proc-macro2 = "1.0.60"
+proc-macro2 = "1.0.95"
 quote = "1"
 syn = { version = "2.0", features = ["full"] }
 ```
@@ -144,7 +144,8 @@ my_macro = { path = "my_macro"}
 ```rust,name=my_macro/src/lib.rs
 use proc_macro::TokenStream;
 
-// proc_macro_attribute 表示定义的是一个属性宏，派生宏是 #[proc_macro_derive]，如果是函数宏，则是 #[proc_macro]
+// proc_macro_attribute 表示定义的是一个属性宏
+// 派生宏是 #[proc_macro_derive]，如果是函数宏，则是 #[proc_macro]
 // 只有在 Cargo.toml 中设置了 proc-macro=true 的 crate 能够引入这一标注
 #[proc_macro_attribute]
 pub fn my_first_attribute_proc_macro(attr: TokenStream, input: TokenStream) -> TokenStream {
@@ -154,7 +155,7 @@ pub fn my_first_attribute_proc_macro(attr: TokenStream, input: TokenStream) -> T
     input
 }
 ```
-这段过程宏定义的代码已经写完了，可以看到作为演示，它实际上什么都没做。
+这段过程宏定义的代码已经写完了，可以看到作为演示，这个宏把输入原样输出，实际上什么都没改变。
 
 然后我们尝试进行调用。
 ```rust,name=src/main.rs
@@ -334,7 +335,7 @@ input: TokenStream [
 总结：所谓的过程宏，就是我们可以⾃⼰修改上⾯的 item 变量中的值，从⽽等价
 于加⼯原始输⼊代码，最后将加⼯后的代码返回给编译器即可。
 
-补充学习资料：[过程宏作者提供的 Workshop](https://github.com/dtolnay/proc-macro-workshop)
+补充学习资料：[过程宏包作者提供的 Workshop](https://github.com/dtolnay/proc-macro-workshop)
 
 ### 三种过程宏
 本节说一下三种过程宏的联系和区别。
@@ -385,7 +386,7 @@ fn impl_hello_macro(ast: &syn::DeriveInput) -> TokenStream {
     gen.into()
 }
 ```
-可以看到，他只有一个参数，是没有属性的。
+可以看到，派生宏只有一个参数，是没有第二各参数 attr 的。这是肯定的，因为 attr 就是属性宏的“属性”。
 ```rust
 // 使用示例
 // 假设 HelloMacro 特质在某处定义
@@ -401,10 +402,10 @@ fn main() {
 ```
 总结：派生宏自动为类型实现特质，避免用户手动为每种类型编写重复代码。
 
-派生宏只能用在 struct/enum/union 上，多数时候是用在 struct 上。
+派生宏只能用在结构体/枚举/联合体（union，一种共享存储的结构体）上，多数时候是用在结构体上。
 
 #### 属性宏
-前文的例子就是属性宏，这里再对比一下。
+过程宏这节的第一个例子就是属性宏，这里再对比一下。
 
 和派生宏相比，属性宏允许我们定义自己的属性，并且可以用于包括函数在内的多种类型。
 
@@ -428,19 +429,42 @@ pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
 类函数宏可以让我们定义像函数那样调用的宏，和声明宏的区别在于，函数宏并不是模式匹配的形式，而是过程宏的形式。过程宏使用起来更加灵活。
 
 假设我们需要对 SQL 语句进行解析并检查其正确性，就可以定义这样一个宏：
-```rust
+```rust,name=lib.rs
+use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse_macro_input, Expr};
 #[proc_macro]
 pub fn sql(input: TokenStream) -> TokenStream {
+    // 解析输入的 token 流
+    let sql_expr = parse_macro_input!(input as Expr);
+    // 生成输出代码
+    let expanded = quote! {
+        {
+            println!("检查 SQL: {}", #sql_expr);
+            // 这里可以添加实际执行SQL的代码
+            format!("SQL结果: {}", #sql_expr)
+        }
+    };
+    // 转换回 TokenStream
+    expanded.into()
+}
 ```
 而使用形式则类似于函数调用:
 ```rust
-let sql = sql!(SELECT * FROM posts WHERE id=1);
+use my_macro::sql;
+fn main() {
+    let query = "SELECT * FROM users";
+    let result = sql!(query);
+    println!("{}", result);
+}
 ```
 
 ## 总结
 虽然 Rust 中的宏很强大，但是它并不应该成为我们的常规武器，原因是它会影响 Rust 代码的可读性和可维护性。
 
+扩展阅读：[Rust 宏小册](https://zjp-cn.github.io/tlborm/introduction.html)
+
 ***
 
-[^1]: 从这两篇文章可以看出来，圣经就是 Rust book 的说人话版本
+[^1]: 从这两篇文章可以看出来，圣经就是 Sun 大把 Rust book 改写成说人话的版本
 [^2]: 图源 [张汉东](https://github.com/ZhangHanDong/inviting-rust)

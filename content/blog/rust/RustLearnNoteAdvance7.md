@@ -12,7 +12,7 @@ pinned = false
 post_listing_date = "both"
 +++
 
-本节出处：[圣经 多线程](https://course.rs/advance/concurrency-with-threads/intro.html)
+本节出处：[圣经-4.6多线程](https://course.rs/advance/concurrency-with-threads/intro.html)
 
 ***
 
@@ -262,7 +262,7 @@ impl Bar {
 }
 ```
 
-### thread-local-rs 库
+#### thread-local-rs 库
 这是一个[第三方库](https://github.com/Amanieu/thread_local-rs)，允许每个线程持有值的独立拷贝。
 ```rust
 use thread_local::ThreadLocal;
@@ -812,7 +812,7 @@ fn main() {
 ### 条件变量
 锁并没有解决线程的访问顺序问题，因此 Rust 提供了条件变量（Condition Variables）。条件变量经常和互斥锁一起使用，可以让线程挂起，直到某个条件满足后再继续执行。
 
-条件变量在 Rust 中通过`Condvar`创建。
+条件变量在 Rust 中通过`Condvar`创建，支持`wait`和`notify`。
 ```rust
 use std::thread;
 use std::sync::{Arc, Mutex, Condvar};
@@ -1074,7 +1074,7 @@ unsafe impl Send for MyBox {}
 fn main() {
     let p = MyBox(5 as *mut u8);
     let t = thread::spawn(move || {
-        println!("{:?}",p);
+        println!("{:?}", p);
     });
 
     t.join().unwrap();

@@ -12,5 +12,5 @@ pinned = false
 post_listing_date = "both"
 +++
 
-本节出处：[圣经 ]()
+本节出处：[圣经-4.3深入类型](https://course.rs/advance/into-types/intro.html)
 
