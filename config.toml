@@ -91,7 +91,7 @@ footer_menu = [
 # $AUTHOR will be replaced by the `author` variable.
 # $SEPARATOR will be replaced by the `separator` variable.
 # Markdown is supported (links, emphasis, etc).
-copyright = "© $CURRENT_YEAR mxdzs0612 $SEPARATOR 本站所有内容遵守 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) 协议，只要标注出处，可以随意引用。"
+copyright = "© $CURRENT_YEAR mxdzs0612 $SEPARATOR 如无特殊标注，本站所有内容遵守 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) 授权。"
 
 
 [extra.giscus]

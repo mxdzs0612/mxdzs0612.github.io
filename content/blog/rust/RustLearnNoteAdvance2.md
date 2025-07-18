@@ -194,6 +194,7 @@ pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: All
 
 pub(crate) struct RawVec<T, A: Allocator = Global> {
     inner: RawVecInner<A>,
+    // 这是一个虚类型标记
     _marker: PhantomData<T>,
 }
 
