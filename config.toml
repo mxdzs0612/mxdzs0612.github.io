@@ -1,7 +1,8 @@
 # The URL the site will be built for
 base_url = "https://mxdzs0612.github.io/"
 title = "mxdzs0612的博客"
-description = "尝试重启博客中,当成笔记软件用的，无所谓有没有人看了～"
+description = "本站只是学习笔记与吐槽的记录，不承担博客功能。倘若侥幸能有观众，还望多留言，感激不尽"
+author = "mxdzs0612"
 taxonomies = [{ name = "tags", feed = true }]
 
 # Whether to automatically compile all Sass files in the sass directory
@@ -47,6 +48,9 @@ code_block_name_links = false
 # Adds "go up" and "go to comments" buttons on the bottom right (hidden for mobile).
 # Can be set at page or section levels, following the hierarchy: page > section > config. See: https://welpo.github.io/tabi/blog/mastering-tabi-settings/#settings-hierarchy
 quick_navigation_buttons = true
+# Show the author(s) of a page.
+# Can be set at page or section levels, following the hierarchy: page > section > config. See: https://welpo.github.io/tabi/blog/mastering-tabi-settings/#settings-hierarchy
+show_author = true
 
 menu = [
     { name = "blog", url = "blog", trailing_slash = true },

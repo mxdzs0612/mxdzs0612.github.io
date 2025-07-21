@@ -3,7 +3,7 @@ title = "Rust 进阶学习笔记（八）：异步编程"
 slug = "rust_learn_note_adv_8"
 date = 2025-07-16
 updated = 2025-07-18
-description = ""
+description = "aysnc、await和future，异步编程调度和执行器，Pin和UnPin，join和select"
 # draft = true
 [taxonomies]
 tags = ["Rust", "Learn"]
