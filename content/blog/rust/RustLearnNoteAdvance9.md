@@ -606,18 +606,236 @@ fn main() {
 全局变量也是一个常见的需求。全局变量的生命周期肯定是`'static`，但是不代表它需要用 static 来声明。
 
 ### 编译期初始化
+大多数使用的全局变量都只需要在编译期初始化即可。以下几种类型都是。
+
+#### 静态常量
+全局常量可以在程序任何一部分使用，当然，如果它是定义在某个模块中，你需要引入对应的模块才能使用。常量，顾名思义它是不可变的，很适合用作静态配置：
+```rust
+const MAX_ID: usize =  usize::MAX / 2;
+fn main() {
+   println!("用户ID允许的最大值是{}", MAX_ID);
+}
+```
+常量具有如下特点：
+- 关键字是 const 而不是 let
+- 定义常量必须指明类型（如 i32），不能省略
+- 定义常量时变量的命名规则一般是全部大写
+- 常量可以在任意作用域进行定义，其生命周期贯穿整个程序的生命周期。编译时编译器会尽可能将其内联到代码中，所以在不同地方对同一常量的引用并不能保证引用到相同的内存地址
+- 常量的赋值只能是常量表达式/数学表达式，也就是说必须是在编译期就能计算出的值，如果需要在运行时才能得出结果的值比如函数，则不能赋值给常量表达式
+- 对于变量出现重复的定义(绑定)会发生变量遮盖，后面定义的变量会遮住前面定义的变量，常量则不允许出现重复的定义
+
+#### 静态变量
+静态（static）变量允许声明一个全局的变量，常用于全局数据统计。必须使用`unsafe`语句块才能访问和修改静态变量。只有在同一线程内或者不在乎数据的准确性时，才应该使用全局静态变量。
+```rust
+static mut REQUEST_RECV: usize = 0;
+fn main() {
+   unsafe {
+        REQUEST_RECV += 1;
+        assert_eq!(REQUEST_RECV, 1);
+   }
+}
+```
+- 静态变量不会被内联，在整个程序中，静态变量只有一个实例，所有的引用都会指向同一个地址
+- 存储在静态变量中的值必须要实现 Sync trait
+
+#### 原子类型
+原子类型是线程安全的，作为全局变量可以在多个线程中使用。详见[多线程](../rust-learn-note-adv-7/#yuan-zi-lei-xing)一节。
+
+### 运行期初始化
+如果有一个全局的动态配置，它希望在程序开始后，才加载数据进行初始化，最终可以让各个线程直接访问使用。上小节的所有类型均无法像这样用函数进行静态初始化，于是就需要寻找其他办法。
+
+#### 懒静态
+[lazy_static](https://github.com/rust-lang-nursery/lazy-static.rs) 是社区第三方[^2]提供的非常强大的宏，用于懒初始化静态变量，定义的静态变量都是不可变引用。
+```rust
+use std::sync::Mutex;
+use lazy_static::lazy_static;
+lazy_static! {
+    static ref NAMES: Mutex<String> = Mutex::new(String::from("Sunface, Jack, Allen"));
+}
+
+fn main() {
+    let mut v = NAMES.lock().unwrap();
+    v.push_str(", Myth");
+    println!("{}",v);
+}
+```
+其内部实现用了一个底层的并发原语`std::sync::Once`，在每次访问该变量时，程序都会执行一次原子指令用于确认静态变量的初始化是否完成，因此会有轻微性能损失。
+
+lazy_static 可以用于实现全局缓存：
+```rust
+use lazy_static::lazy_static;
+use std::collections::HashMap;
+
+lazy_static! {
+    static ref HASHMAP: HashMap<u32, &'static str> = {
+        let mut m = HashMap::new();
+        m.insert(0, "foo");
+        m.insert(1, "bar");
+        m.insert(2, "baz");
+        m
+    };
+}
+
+fn main() {
+    // 首次访问`HASHMAP`的同时对其进行初始化
+    println!("The entry for `0` is \"{}\".", HASHMAP.get(&0).unwrap());
+
+    // 后续的访问仅仅获取值，再不会进行任何初始化操作
+    println!("The entry for `1` is \"{}\".", HASHMAP.get(&1).unwrap());
+}
+```
+
+#### Box::leak
+`Box::leak`也可以用于全局变量。它可以将一个变量从内存中“泄漏”，然后将其变为`'static`生命周期，最终该变量将和程序活得一样久，因此可以赋值给全局静态变量。
+```rust
+#[derive(Debug)]
+struct Config {
+    a: String,
+    b: String
+}
+static mut CONFIG: Option<&mut Config> = None;
+
+fn main() {
+    let c = Box::new(Config {
+        a: "A".to_string(),
+        b: "B".to_string(),
+    });
+
+    unsafe {
+        // 将`c`从内存中泄漏，变成`'static`生命周期
+        CONFIG = Some(Box::leak(c));
+        println!("{:?}", CONFIG);
+    }
+}
+```
+如果需要在运行期从一个函数返回一个全局变量，同样可以用`Box::leak`：
+```rust
+#[derive(Debug)]
+struct Config {
+    a: String,
+    b: String,
+}
+static mut CONFIG: Option<&mut Config> = None;
+
+fn init() -> Option<&'static mut Config> {
+    let c = Box::new(Config {
+        a: "A".to_string(),
+        b: "B".to_string(),
+    });
+
+    Some(Box::leak(c))
+}
 
 
+fn main() {
+    unsafe {
+        CONFIG = init();
 
+        println!("{:?}", CONFIG)
+    }
+}
+```
 
+### 标准库中的懒加载
+标准库中也提供了一些懒加载的 API。
+| | 单线程 | 多线程 |
+| ---| --- | --- |
+| Once  | OnceCell | OnceLock |
+| Lazy  | LazyCell | LazyLock |
 
+Lazy 会自动按需加载内容，让代码更简洁，更人性化，而 Once 则可以手动指定初始化的时机或使用不同的方法初始化，更强大。Cell 的实现更简单，效率也更高，但是他并不保证线程安全，而 Lock 通过内部同步机制实现了线程安全。
 
+下面来看同一个例子的两种写法。
 
+#### Once
+```rust
+use std::{sync::OnceLock, thread};
 
+fn main() {
+    // 子线程中调用
+    let handle = thread::spawn(|| {
+        let logger = Logger::global();
+        logger.log("thread message".to_string());
+    });
 
+    // 主线程调用
+    let logger = Logger::global();
+    logger.log("some message".to_string());
 
+    let logger2 = Logger::global();
+    logger2.log("other message".to_string());
 
-{{ admonition(type="warning", title="注意", text="施工中") }}
+    handle.join().unwrap();
+}
+
+#[derive(Debug)]
+struct Logger;
+
+static LOGGER: OnceLock<Logger> = OnceLock::new();
+
+impl Logger {
+    fn global() -> &'static Logger {
+        // 获取或初始化 Logger
+        // Once 可以保障在多个线程中使用也只被打印了一次
+        LOGGER.get_or_init(|| {
+            println!("Logger is being created..."); // 初始化打印
+            Logger
+        })
+    }
+
+    fn log(&self, message: String) {
+        println!("{}", message)
+    }
+}
+// // 输出
+// Logger is being created...
+// some message
+// other message
+// thread message
+```
+
+#### Lazy
+```rust
+use std::{sync::LazyLock, thread};
+
+fn main() {
+    // 子线程中调用
+    let handle = thread::spawn(|| {
+        // 直接使用对全局变量的引用
+        // 在获取引用的时候， LazyLock 会自动检查初始化的状态并进行初始化。
+        let logger = &LOGGER;
+        logger.log("thread message".to_string());
+    });
+
+    // 主线程调用
+    let logger = &LOGGER;
+    logger.log("some message".to_string());
+
+    let logger2 = &LOGGER;
+    logger2.log("other message".to_string());
+
+    handle.join().unwrap();
+}
+
+#[derive(Debug)]
+struct Logger;
+
+// 使用 LazyLock::new 方法直接对全局变量 LOGGER 进行赋值，并传入一个初始化函数。
+static LOGGER: LazyLock<Logger> = LazyLock::new(Logger::new);
+
+impl Logger {
+    fn new() -> Logger {
+        println!("Logger is being created...");
+        Logger
+    }
+
+    fn log(&self, message: String) {
+        println!("{}", message)
+    }
+}
+```
 
 ***
+
 [^1]: 无界（unbound）生命周期通常是不安全代码凭空产生的引用或生命周期，常常是解引用一个裸指针时产生的，因为输入参数根本就没有这个生命周期
+[^2]: 这个功能明显是一早就应该第一方提供的，不知道 Rust 怎么想的。不过现在内置的 Lazy 勉强能替代了
