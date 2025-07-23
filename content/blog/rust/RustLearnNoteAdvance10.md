@@ -1,9 +1,9 @@
 +++
 title = "Rust 进阶学习笔记（十）：高级错误处理"
 slug = "rust_learn_note_adv_10"
-date = 2025-07-30
-updated = 2025-07-30
-description = ""
+date = 2025-07-21
+updated = 2025-07-22
+description = "组合错误方法，自定义错误处理，归一化错误类型"
 # draft = true
 [taxonomies]
 tags = ["Rust", "Learn"]
