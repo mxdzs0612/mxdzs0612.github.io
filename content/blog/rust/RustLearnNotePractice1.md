@@ -14,3 +14,4 @@ post_listing_date = "both"
 
 本节出处：[圣经 ]()
 
+{{ admonition(type="warning", title="注意", text="施工中") }}

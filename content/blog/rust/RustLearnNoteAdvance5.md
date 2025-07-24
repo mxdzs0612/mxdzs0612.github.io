@@ -2,7 +2,7 @@
 title = "Rust 进阶学习笔记（五）：包，模块与Cargo指南"
 slug = "rust_learn_note_adv_5"
 date = 2025-07-09
-updated = 2025-07-12
+updated = 2025-07-25
 description = "项目及其目录结构，包，模块，模块的引入与模块可见性，包的构建，依赖的添加，cargo配置和清单，工作空间，条件编译，发布配置"
 # draft = true
 [taxonomies]
@@ -15,6 +15,8 @@ post_listing_date = "both"
 本节出处：[圣经-2.12包和模块](https://course.rs/basic/crate-module/intro.html) [圣经-4.10Cargo](https://course.rs/cargo/intro.html)
 
 从这节开始，每节的内容开始多了起来，我也做不到日更了。水温逐渐升高了！
+
+本节的内容非常多但信息密度不大，慢慢写吧。
 
 ***
 
@@ -344,5 +346,33 @@ pub mod a {
 - `pub(in <path>)` 表示在某个路径代表的模块中可见，其中 path 必须是父模块或者祖先模块
 
 ## Cargo
+在 Rust 的使用过程中免不了要使用 Cargo。下面的内容都很简单，不再详细解释了。
+```sh
+cargo new hello_world
+cargo build
+./target/debug/hello_world
+# 上两行可以归一：
+cargo run
+```
 
-{{ admonition(type="warning", icon="warning", title="注意", text="内容太多信息密度太低，看完不想写了，已 TJ") }}
+### 为何会有 Cargo
+如果直接使用 rustc 对二进制包进行编译，生成二进制可执行文件这个方式，虽然简单，但是必须要指定文件名编译，当项目复杂后，这种编译方式也随之更加复杂。此外，如果要指定编译参数，情况将更加复杂。更不好处理的是，一旦要引入第三方的依赖包，这种方式会变得难以管理。因此就有了 Cargo。
+
+Cargo 为了实现目标，做了四件事：
+- 引入两个元数据文件，包含项目的方方面面信息: Cargo.toml 和 Cargo.lock
+- 获取和构建项目的依赖，例如 Cargo.toml 中的依赖包版本描述，以及从 crates.io 下载包
+- 调用 rustc（或其它编译器）并使用的正确的参数来构建项目，例如 cargo build
+- 引入一些惯例，让项目的使用更加简单
+
+### 使用 Cargo 构建项目
+对于任何开源的 Rust 项目，`cargo build`能够搞定一切构建，而无需关心背后复杂的配置。
+
+#### 指定依赖项
+Cargo 默认会从 [crates.io](https://crates.io/) 下载依赖。这是 Rust 社区维护的中心化注册服务，用户可以在其中寻找和下载所需的包。在Cargo.toml 文件的`[dependencies]`部分添加目标包名和版本号即可。
+```toml,name=Cargo.toml
+[dependencies]
+time = "0.1.12"
+```
+实际上，还有从本地路径引用的方式。
+
+{{ admonition(type="warning", icon="warning", title="注意", text="这节我真写不下去了，感觉没什么写的必要，就这样了吧") }}

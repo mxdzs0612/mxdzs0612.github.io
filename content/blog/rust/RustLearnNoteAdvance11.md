@@ -405,7 +405,7 @@ mod tests {
 ```
 
 #### 条件编译
-`#[cfg(test)]`标注告诉编译器只有在 cargo test 时才编译和运行模块 tests，其它时候直接忽略。`cfg`是 configuration 的缩写，它告诉 Rust ：当 test 配置项存在时，才运行下面的代码，而`cargo test`在运行时，就会将 test 这个配置项传入进来，因此后面的 tests 模块会被包含进来。这是典型的**条件编译**（坏了，这提醒我该回去填坑了）。
+`#[cfg(test)]`标注告诉编译器只有在 cargo test 时才编译和运行模块 tests，其它时候直接忽略。`cfg`是 configuration 的缩写，它告诉 Rust ：当 test 配置项存在时，才运行下面的代码，而`cargo test`在运行时，就会将 test 这个配置项传入进来，因此后面的 tests 模块会被包含进来。这是典型的**条件编译**。
 
 这么做有几个好处：
 - 节省构建代码时的编译时间
@@ -550,4 +550,200 @@ pub fn try_div(a: i32, b: i32) -> Result<i32, String> {
 ## 断言
 在编写测试函数时，断言决定了我们的测试是通过还是失败。本节来看看 Rust 提供的断言都有什么。
 
-{{ admonition(type="warning", title="注意", text="施工中") }}
+### 通用断言
+assert_eq! 宏可以用于判断两个表达式返回的值是否相等；当不相等时，当前线程会直接 panic。断言可以自定义错误信息。
+```rust
+fn main() {
+    let a = 3;
+    let b = 1 + 3;
+    assert_eq!(a, b, "我们在测试两个数之和{} + {}，这是额外的错误信息", a, b);
+}
+```
+因为涉及到相等比较和错误信息打印，因此两个表达式的值必须实现 PartialEq 和 Debug 特质。所有的原生类型和大多数标准库类型都已经实现好了，而对于自己定义的结构体、枚举，如果想要对其进行 assert_eq! 断言，则需要手动实现 PartialEq 和 Debug 特质:
+- 若希望实现个性化相等比较和错误打印，则需手写一个实现
+- 否则可以为自定义的结构体、枚举添加 #[derive(PartialEq, Debug)] 注解，来自动派生对应的特质
+
+assert_ne! 判断的是两个表达式返回的值是否不相等，除此之外在使用和限制上与 assert_eq! 并无区别。
+```rust
+fn main() {
+    let a = 3;
+    let b = 1 + 3;
+    assert_ne!(a, b, "我们在测试两个数之和{} + {}，这是额外的错误信息", a, b);
+}
+```
+assert! 用于判断传入的布尔表达式是否为 true。
+```rust
+// 以下断言的错误信息只包含给定表达式的返回值
+assert!(true);
+
+fn some_computation() -> bool { true }
+
+assert!(some_computation());
+
+// 使用自定义报错信息
+let x = true;
+assert!(x, "x wasn't true!");
+
+// 使用格式化的自定义报错信息
+let a = 3; let b = 27;
+assert!(a + b == 30, "a = {}, b = {}", a, b);
+```
+这是一个单元测试的例子：
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn can_hold(&self, other: &Rectangle) -> bool {
+        self.width > other.width && self.height > other.height
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn larger_can_hold_smaller() {
+        let larger = Rectangle {
+            width: 8,
+            height: 7,
+        };
+        let smaller = Rectangle {
+            width: 5,
+            height: 1,
+        };
+
+        assert!(larger.can_hold(&smaller));
+    }
+}
+```
+
+### 调试断言
+debug_assert!, debug_assert_eq!, debug_assert_ne! 这三个断言在功能上与通用版本没有区别，但他们只能在 Debug 模式下输出。
+```rust
+fn main() {
+    let a = 3;
+    let b = 1 + 3;
+    debug_assert_eq!(a, b, "我们在测试两个数之和{} + {}，这是额外的错误信息", a, b);
+    // cargo run --release 执行时不会输出
+}
+```
+若一些断言检查会影响发布版本的性能时，可以使用 debug_assert! 来避免这种情况的发生。
+
+## 持续集成
+（略，本博客就是使用 Github Action 构建的，这节跳过了）
+
+## 基准测试
+性能测试包含了两种：压力测试和基准测试。前者是针对接口 API，模拟大量用户去访问接口然后生成接口级别的性能数据；而后者是针对代码，可以用来测试某一段代码的运行速度，例如一个排序算法。
+
+### 官方基准测试
+官方提供的基准测试需要 nightly 的 rust。
+```sh
+# 安装 nightly 版本
+$ rustup install nightly
+# 将当前项目使用的 rust 设置为 nightly
+$ rustup override set nightly
+# 切换回来
+$ rustup override set stable
+```
+```rust,name=src/lib.rs
+#![feature(test)]
+
+extern crate test;
+
+pub fn add_two(a: i32) -> i32 {
+    a + 2
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test::Bencher;
+
+    #[test]
+    fn it_works() {
+        assert_eq!(4, add_two(2));
+    }
+
+    #[bench]
+    fn bench_add_two(b: &mut Bencher) {
+        b.iter(|| add_two(2));
+    }
+}
+```
+benchmark 跟单元测试区别不大，最大的区别在于它是通过`#[bench]`标注，而单元测试是通过`#[test]`进行标注，这意味着`cargo test`将不会运行 benchmark 代码，需要的则是`cargo bench`命令。相对的，该命令下测试代码不会执行。
+```sh
+$ cargo bench
+running 2 tests
+test tests::it_works ... ignored
+test tests::bench_add_two ... bench:           0 ns/iter (+/- 0)
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 1 measured; 0 filtered out; finished in 0.29s
+```
+benchmark 的结果是 0 ns/iter，表示每次迭代 b.iter 耗时 0 ns。
+
+一般建议这么使用基准测试：
+- 将初始化代码移动到 b.iter 循环之外，否则每次循环迭代都会初始化一次，这里只应该存放需要精准测试的代码
+- 让代码每次都做一样的事情，例如不要去做累加或状态更改的操作
+- 最好让 iter 之外的代码也具有幂等性，因为它也可能被 benchmark 运行多次
+- 循环内的代码应该尽量的短小快速，因为这样循环才能被尽可能多的执行，结果也会更加准确
+
+上面的测试结果中性能是 0ns，这是因为 LLVM 认为函数调用的结果没有使用，同时也认为该函数没有任何副作用（修改外部变量、访问网络等），所以把函数调用优化掉了。
+
+使用 Rust 标准库中的 black_box 函数就能解决。例如
+```rust
+for i in 100..200 {
+    test::black_box(fibonacci_u64(test::black_box(i)));
+}
+```
+
+### Criterion
+[criterion.rs](https://github.com/bheisler/criterion.rs) 是社区最著名的基准测试库，特性如下：
+- 具有统计分析功能，能够在测试之间进行比对
+- 能够制作图表，前提是安装了 gnuplots
+```toml,name=Cargo.toml
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "my_benchmark"
+harness = false
+```
+```rust,name=benches/my_benchmark.rs
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+
+fn fibonacci(n: u64) -> u64 {
+    match n {
+        0 => 1,
+        1 => 1,
+        n => fibonacci(n-1) + fibonacci(n-2),
+    }
+}
+
+fn criterion_benchmark(c: &mut Criterion) {
+    c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
+}
+
+criterion_group!(benches, criterion_benchmark);
+criterion_main!(benches);
+```
+运行并观察结果
+```sh
+     Running target/release/deps/example-423eedc43b2b3a93
+Benchmarking fib 20
+Benchmarking fib 20: Warming up for 3.0000 s
+Benchmarking fib 20: Collecting 100 samples in estimated 5.0658 s (188100 iterations)
+Benchmarking fib 20: Analyzing
+fib 20                  time:   [26.029 us 26.251 us 26.505 us]
+Found 11 outliers among 99 measurements (11.11%)
+  6 (6.06%) high mild
+  5 (5.05%) high severe
+slope  [26.029 us 26.505 us] R^2            [0.8745662 0.8728027]
+mean   [26.106 us 26.561 us] std. dev.      [808.98 ns 1.4722 us]
+median [25.733 us 25.988 us] med. abs. dev. [234.09 ns 544.07 ns]
+```
