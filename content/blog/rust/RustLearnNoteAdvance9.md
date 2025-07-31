@@ -687,6 +687,8 @@ fn main() {
 
 #### Box::leak
 `Box::leak`也可以用于全局变量。它可以将一个变量从内存中“泄漏”，然后将其变为`'static`生命周期，最终该变量将和程序活得一样久，因此可以赋值给全局静态变量。
+
+注意新版这招被默认被禁了，需要加上允许 static_mut_refs 的注解。
 ```rust
 #[derive(Debug)]
 struct Config {
@@ -695,6 +697,7 @@ struct Config {
 }
 static mut CONFIG: Option<&mut Config> = None;
 
+#[allow(static_mut_refs)]
 fn main() {
     let c = Box::new(Config {
         a: "A".to_string(),

@@ -429,7 +429,7 @@ fn main() {
     // ref ref_mut move
     let evens = numbers
     // into_iter 是另一种创建迭代器的方式
-    // 迭代器也有 ref ref_mut move，后续会展开
+    // 迭代器也有 ref ref_mut move，后续会展开讲
         .into_iter()
         .filter(|&x| x % 2 == 0)
         .collect::<Vec<_>>();

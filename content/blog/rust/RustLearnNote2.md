@@ -3,7 +3,7 @@ title = "Rust 入门学习笔记（二）：所有权与复杂类型"
 slug = "rust_learn_note_2"
 date = 2025-06-24
 updated = 2025-06-27
-description = "所有权与字符串，结构体，枚举"
+description = "所有权与字符串，结构体，枚举，方法和关联函数，所有权基础，内存堆栈"
 [taxonomies]
 tags = ["Rust", "Learn"]
 [extra]
@@ -413,7 +413,6 @@ Rust 所有权总是会涉及到`self`，但这个`self`和面向对象的`this`
 1. 不可变借用（immutable borrow）：值的所有权归发送方所有，接收方直接接收对该值的引用而不是副本。接收方不能通过引用来修改它指向的值。释放资源的行为由发送方负责。（&self或self: &Self）
 2. 可变借用（mutable borrow）：值的所有权和释放责任依然由发送方承担，但接收方可以通过接收的引用来修改值。在同一时刻只能有一个可变借用。（&mut self或self: &mut Self）
 3. 所有权转移（move）[^1]：值的所有权会直接移交给接收方，发送方在引用移动的上下文之后就不能再使用该引用（报错 borrow of moved value）。（self或self: Self）
-
 > 上述括号中或后面的`self`可以起任意变量名字。
 
 ***
@@ -465,6 +464,57 @@ fn main() {
     // println!("c2 number {}", c2.get_number());
 
     println!("c3 number {}", c3.get_number());
+}
+```
+ref 是一种模式。在通过 let 绑定来进行模式匹配或解构时，ref 关键字可用来创建结构体/元组的字段的引用。
+```rust
+#[derive(Clone, Copy)]
+struct Point { x: i32, y: i32 }
+
+fn main() {
+    let c = 'Q';
+
+    // 赋值语句中左边的 `ref` 关键字等价于右边的 `&` 符号。
+    let ref ref_c1 = c;
+    let ref_c2 = &c;
+
+    println!("ref_c1 equals ref_c2: {}", *ref_c1 == *ref_c2);
+
+    let point = Point { x: 0, y: 0 };
+
+    // 在解构一个结构体时 `ref` 同样有效。
+    let _copy_of_x = {
+        // `ref_to_x` 是一个指向 `point` 的 `x` 字段的引用。
+        let Point { x: ref ref_to_x, y: _ } = point;
+
+        // 返回一个 `point` 的 `x` 字段的拷贝。
+        *ref_to_x
+    };
+
+    // `point` 的可变拷贝
+    let mut mutable_point = point;
+
+    {
+        // `ref` 可以与 `mut` 结合以创建可变引用。
+        let Point { x: _, y: ref mut mut_ref_to_y } = mutable_point;
+
+        // 通过可变引用来改变 `mutable_point` 的字段 `y`。
+        *mut_ref_to_y = 1;
+    }
+
+    println!("point is ({}, {})", point.x, point.y);
+    println!("mutable_point is ({}, {})", mutable_point.x, mutable_point.y);
+
+    // 包含一个指针的可变元组
+    let mut mutable_tuple = (Box::new(5u32), 3u32);
+    
+    {
+        // 解构 `mutable_tuple` 来改变 `last` 的值。
+        let (_, ref mut last) = mutable_tuple;
+        *last = 2u32;
+    }
+    
+    println!("tuple is {:?}", mutable_tuple);
 }
 ```
 

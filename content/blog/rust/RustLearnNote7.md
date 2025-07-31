@@ -144,7 +144,8 @@ fn main() {
     println!("{}", a.overview());
     let b_a = Box::new(Obj {});
     call_obj_box(b_a);
-    // println!("{}", b_a.overview()); // call_obj_box 使用 move 传参，所有权转移了，所以此处无法打印
+    // println!("{}", b_a.overview());
+     // call_obj_box 使用 move 传参，所有权转移了，所以此处无法打印
     // 集合
     let c: Box<dyn Sale> = Box::new(Common(100.0));
     let t1: Box<dyn Sale> = Box::new(TenDiscount(100.0));
@@ -280,7 +281,10 @@ struct Point<T> {
 // T的这样类型 它可以执行相加的操作
 impl<T> Add for Point<T>
 where
-    T: Add<Output = T>, // 指定 Add 特质的关联类型 Output 为 T。这意味着当两个 T 类型的值相加时，结果类型必须也是 T。从 Add 的源码中可以看到 Output 是 Add 的返回值
+    T: Add<Output = T>, 
+    // 指定 Add 特质的关联类型 Output 为 T。
+    // 这意味着当两个 T 类型的值相加时，结果类型必须也是 T。
+    // 从 Add 的源码中可以看到 Output 是 Add 的返回值
 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
