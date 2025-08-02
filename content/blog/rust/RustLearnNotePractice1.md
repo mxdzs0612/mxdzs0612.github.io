@@ -12,6 +12,8 @@ pinned = false
 post_listing_date = "both"
 +++
 
-本节出处：[圣经 ]()
+本节出处：[圣经 文件搜索工具](https://course.rs/basic-practice/intro.html)
+
+学完了，该整项目了。
 
 {{ admonition(type="warning", title="注意", text="施工中") }}
