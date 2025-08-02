@@ -145,7 +145,7 @@ fn main() {
     let b_a = Box::new(Obj {});
     call_obj_box(b_a);
     // println!("{}", b_a.overview());
-     // call_obj_box 使用 move 传参，所有权转移了，所以此处无法打印
+    // call_obj_box 使用 move 传参，所有权转移了，所以此处无法打印
     // 集合
     let c: Box<dyn Sale> = Box::new(Common(100.0));
     let t1: Box<dyn Sale> = Box::new(TenDiscount(100.0));

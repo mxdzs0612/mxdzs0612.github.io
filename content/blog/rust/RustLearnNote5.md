@@ -192,3 +192,107 @@ fn main() {
     println!("{}", holder.get_ref());
 }
 ```
+
+## 约束
+### 类型约束
+前面已经见过，这种限制生命周期的方式就是类型约束。
+`'a: 'b`：假设有两个引用 &'a i32 和 &'b i32，它们的生命周期分别是 'a 和 'b，若 'a >= 'b，则可以定义 'a: 'b，表示 'a 至少要活得跟 'b 一样久。
+```rust
+struct ImportantExcerpt<'a> {
+    part: &'a str,
+}
+
+// 指定 a 的生命周期比 b 长
+impl<'a: 'b, 'b> ImportantExcerpt<'a> {
+    fn announce_and_return_part(&'a self, announcement: &'b str) -> &'b str {
+        println!("Attention please: {}", announcement);
+        self.part
+    }
+}
+
+fn main() {
+    println!("Success!")
+}
+```
+```rust
+// where 语句的类型约束
+fn f<'a, 'b>(x: &'a i32, mut y: &'b i32) where 'a: 'b {
+    y = x; // &'a i32 is a subtype of &'b i32 because 'a: 'b
+    let r: &'b &'a i32 = &&0; // &'b &'a i32 is well formed because 'a: 'b
+}
+fn main() {
+    println!("Success!")
+}
+```
+
+### 特质约束
+就像泛型类型可以有约束一样，生命周期也可以有约束。
+- T: 'a，所有引用在类型 T 必须超过生命周期 'a
+- T: Trait + 'a: T 必须实现特质 Trait 并且所有引用在 T 必须超过生命周期 'a
+
+```rust
+use std::fmt::Debug; // 特质约束使用
+
+#[derive(Debug)]
+struct Ref<'a, T: 'a>(&'a T);
+// `Ref` 包含对泛型类型 `T` 的引用，该泛型类型具有
+// 未知的生命周期 `'a`. `T` 是约定任何
+// 引用在 `T` 必须大于 `'a` 。此外，在生命周期
+// 里 `Ref` 不能超过 `'a`。
+
+// 使用 `Debug` 特质打印的通用函数。
+fn print<T>(t: T) where
+    T: Debug {
+    println!("`print`: t is {:?}", t);
+}
+
+// 这里引用 `T` 使用 where `T` 实现
+// `Debug` 和所有引用 `T` 都要比 `'a` 长
+// 此外，`'a`必须要比函数声明周期长
+fn print_ref<'a, T>(t: &'a T) where
+    T: Debug + 'a {
+    println!("`print_ref`: t is {:?}", t);
+}
+
+fn main() {
+    let x = 7;
+    let ref_x = Ref(&x);
+
+    print_ref(&ref_x);
+    print(ref_x);
+}
+```
+```rust
+/* 使用生命周期注释结构体，假设我们要求
+1. `r` 和 `s` 必须是不同生命周期
+2. `s` 的生命周期需要大于 'r'
+*/
+struct DoubleRef<'a,'b:'a, T> {
+    r: &'a T,
+    s: &'b T
+}
+
+fn main() {
+    println!("Success!")
+}
+```
+```rust
+fn call_on_ref_zero<F>(f: F) where for<'a> F: Fn(&'a i32) {
+    let zero = 0;
+    f(&zero);
+}
+
+fn main() {
+    println!("Success!")
+}
+```
+
+### 高阶生命周期
+高阶特质约束（HRTB，Higher-ranked trait bounds）的语法是`for<'a>`。它显式告诉编译器：变量必须能处理任何生命周期的类型，而不仅仅是某个特定的生命周期
+```rust
+// 对于任意生命周期 'a，F 都必须实现 Fn(&'a i32)
+fn call_on_ref_zero<F>(f: F) where F: for<'a> Fn(&'a i32) {
+    let zero = 0;
+    f(&zero);
+}
+```

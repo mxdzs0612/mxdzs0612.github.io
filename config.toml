@@ -10,9 +10,9 @@ compile_sass = true
 generate_feeds = true
 
 # Whether to build a search index to be used later on by a JavaScript library
-build_search_index = false
+build_search_index = true
 
-default_language = "zh-Hans"
+default_language = "zh"
 
 theme = "tabi"
 
@@ -111,5 +111,5 @@ enable_reactions = 1                   # 1 to enable, 0 to disable.
 comment_box_above_comments = true
 light_theme = "noborder_light"
 dark_theme = "noborder_dark"
-lang = ""                              # Leave blank to match the page's language.
+lang = "zh-CN"                              # Leave blank to match the page's language.
 lazy_loading = true

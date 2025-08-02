@@ -79,7 +79,7 @@ fn main() {
 - 转移所有权`FnOnce`
 默认情况下是由 Rust 编译器决定用哪种方式获取外部参数。
 
-闭包是有层级的：`Fn`能被当作`FnMut`和`FnOnce`使用；`FnMut`能被当作`FnOnce`；`FnOnce`只能当作自己。
+闭包是有层级的：`Fn`能被当作`FnMut`和`FnOnce`使用；`FnMut`能被当作`FnOnce`；`FnOnce`只能当作自己。也就是说，编译器会优先使用最不严格的特质进行推断。
 
 ### 所有权转移
 如果想要进行 Move 操作，需要使用`move`关键字强制将所有权转移到闭包。

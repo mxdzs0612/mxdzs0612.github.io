@@ -1,7 +1,7 @@
 +++
 title = "StarRocks"
 description = "StarRocks，开源OLAP引擎"
-weight = 2
+weight = 4
 
 [extra]
 local_image = "images/starrocks.png"
