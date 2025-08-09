@@ -16,6 +16,22 @@ default_language = "zh"
 
 theme = "tabi"
 
+[search]
+# Whether to include the title of the page/section in the index.
+include_title = true
+# Whether to include the description of the page/section in the index.
+include_description = true
+# Whether to include the path of the page/section in the index.
+include_path = true
+# Whether to include the rendered content of the page/section in the index.
+include_content = true
+# At which character to truncate the content to. Useful if you have a lot of pages and the index would
+# become too big to load on the site. Defaults to not being set.
+# truncate_content_length = 100
+# Whether to produce the search index as a javascript file or as a JSON file.
+# Accepted value "elasticlunr_javascript" or "elasticlunr_json".
+index_format = "elasticlunr_json"
+
 [markdown]
 # Whether to do syntax highlighting
 # Theme can be customised by setting the `highlight_theme` variable to a theme supported by Zola
@@ -88,6 +104,14 @@ footer_menu = [
     { url = "privacy", name = "privacy", trailing_slash = true },
     { url = "sitemap.xml", name = "sitemap", trailing_slash = false },
 ]
+
+# Enable iine like buttons on all posts: https://iine.to/
+# Can be set at page or section levels, following the hierarchy: page > section > config. See: https://welpo.github.io/tabi/blog/mastering-tabi-settings/#settings-hierarchy
+iine = true
+iine_icon = "thumbs_up"  # See https://iine.to/#customise
+# Unify like counts across all language versions of the same page.
+# When enabled, likes on /es/blog/hello/ will count towards /blog/hello/ (default language).
+iine_unified_languages = true
 
 # Enable a copyright notice for the footer, shown between socials and the "Powered by" text.
 # $TITLE will be replaced by the website's title.

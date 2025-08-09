@@ -19,7 +19,7 @@ Rust 入门学习笔记以实际例子为主，讲解部分不是从零开始的
 [视频](https://www.bilibili.com/video/BV15y421h7j7/)
 [代码](https://gitlab.com/yzzy/rust_project/)
 
-Rust 进阶学习笔记以及实战的来源则五花八门，将会标注在下一行。
+Rust 进阶学习笔记以及实战的来源则五花八门，将会标注在**下一行**⬇️。
 """
 
 [extra.series_outro_templates]
