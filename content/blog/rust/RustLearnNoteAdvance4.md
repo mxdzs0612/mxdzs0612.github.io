@@ -234,7 +234,7 @@ pub fn flaky_test(_attr: TokenStream, input: TokenStream) -> TokenStream {‘
 
 ### 理解过程宏
 上一节中的例子里，我们在编译时打印了属性宏内的 attr 和 input 的内容。打印结果如下：
-```text
+```
 attr: TokenStream [
     Literal {
         kind: Str,
