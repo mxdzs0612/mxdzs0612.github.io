@@ -161,7 +161,7 @@ fn main() {
     println!("{:?}", cat_vec2);
     // println!("{:?}", cat2);
 
-        let cat1 = Rc::new(Cat {});
+    let cat1 = Rc::new(Cat {});
     let cat2 = Rc::new(Cat {});
     let cat3 = Rc::new(Cat {});
 
