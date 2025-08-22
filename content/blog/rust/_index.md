@@ -3,7 +3,7 @@ title = "Rust 学习笔记"
 template = "series.html"
 sort_by = "slug"
 transparent = true
-paginate_by = 10
+# paginate_by = 10
 
 [extra]
 series = true
@@ -11,7 +11,7 @@ post_listing_index_reversed = false
 
 [extra.series_intro_templates]
 default = """
-本文属于我的 $SERIES_HTML_LINK 系列。
+本文属于我的 $SERIES_HTML_LINK 系列，您现在看到的这段话是本系列的固定起始语。
 
 Rust 入门学习笔记以实际例子为主，讲解部分不是从零开始的，所以不建议纯萌新观看，读者最好拥有任意一种面向对象语言的基础，然后自己多多少少看过 Rust 的基本语法，刷过一点 [rustlings](https://github.com/SandmeyerX/rustlings-zh-cn)。
 

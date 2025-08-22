@@ -1,8 +1,8 @@
 +++
-title = "Rust 项目实战（二）：Mini-LSM"
+title = "Rust 项目实战（二）：Mini-LSM（更新至1-1）"
 slug = "rust_learn_note_prac_2"
 date = 2025-08-13
-updated = 2025-08-16
+updated = 2025-08-21
 description = "迟策大佬的 Mini-LSM 项目的通关笔记"
 # draft = true
 [taxonomies]
@@ -28,7 +28,7 @@ post_listing_date = "both"
 
 本文暂时省略 LSM 的介绍，详细信息可以参考 [RocksDB Wiki](https://github.com/facebook/rocksdb/wiki/RocksDB-Overview)。
 
-本文不能代替项目文档，读者如有疑问还需优先查看项目文档。项目的环境安装、测试准备等在本文中也不再赘述，请看项目文档。
+本文不会复述题目内容，因此不能代替项目文档。我默认读者阅读本文前已经看过对应章节的项目文档。此外，环境安装、测试怎么跑等基础内容在本文中也不再赘述，请自行从项目文档里面找。
 
 ## Week 1：Mini-LSM
 ![week1](https://skyzh.github.io/mini-lsm/lsm-tutorial/week1-overview.svg)
@@ -87,7 +87,7 @@ pub fn put(&self, _key: &[u8], _value: &[u8]) -> Result<()> {
 注意文档中有句关键的提示：
 >  As our memtable implementation only requires an immutable reference for put, you ONLY need to take the read lock on state in order to modify the memtable.
 
-什么锁？怎么获取锁？什么都不知道怎么办？一翻上下翻找后，我发现 MiniLsm 这个结构体默认已经实现了一些方法，主要来看这个方法：
+什么锁？怎么获取锁？什么都不知道怎么办？一翻上下翻找后，我发现内置的 MiniLsm 这个结构体默认已经实现了一些方法，主要来看这个方法：
 ```rust,name=lsm_storage.rs
 pub fn force_flush(&self) -> Result<()> {
     if !self.inner.state.read().memtable.is_empty() {
@@ -100,7 +100,7 @@ pub fn force_flush(&self) -> Result<()> {
     Ok(())
 }
 ```
-具体在做什么不用管，我们只需要知道它调用的`self.inner`就是我们正在开发的 LsmStorageInner。这样就有一个大概思路了。如法炮制，还是先来实现 get。这里会比任务 1 中复杂一些，主要在于需要获取锁，然后返回的结果又用 Result 包了一下。其实也没复杂多少，顺手的事：
+具体在做什么不用管（应该能猜到和落盘有关），我们只需要知道它调用的`self.inner`就是我们正在开发的 LsmStorageInner。这样就有一个大概思路了。如法炮制，还是先来实现 get。这里会比任务 1 中复杂一些，主要在于需要获取锁，然后返回的结果又用 Result 包了一下。其实也没复杂多少，顺手的事：
 ```rust,name=lsm_storage.rs
 /// Get a key from the storage. In day 7, this can be further optimized by using a bloom filter.
 pub fn get(&self, _key: &[u8]) -> Result<Option<Bytes>> {
@@ -180,7 +180,7 @@ fn test_task3_freeze_on_capacity() {
 ```
 可以看到，这两个测试分别是主动和被动调用了 force_freeze_memtable。并且这里涉及到一个变量 approximate_size 和两个配置 target_sst_size、num_memtable_limit。也就是说还需要估算一下 memtable 的大小。
 
-先来写 force_freeze_memtable。这个方法要做的事情，就是在它无论因为什么而被调用到了的时候，就把当前 memtable 刷到 imm_memtables里面。注意到文档中还有句话
+先来写 force_freeze_memtable。这个方法要做的事情，就是在它无论因为什么而被调用到了的时候，就把当前 memtable 写到 imm_memtables 里面。注意到文档中还有句话
 >You can simply assign the next memtable id as self.next_sst_id(). Note that the imm_memtables stores the memtables from the latest one to the earliest one. That is to say, imm_memtables.first() should be the last frozen memtable.
 
 我们先来看看这个 next_sst_id：
@@ -282,7 +282,7 @@ pub fn put(&self, _key: &[u8], _value: &[u8]) -> Result<()> {
 *此处有个问题，如果相同的键多次写入，approximate_size 会一直增加，但实际 map 里的内容并没增加，内存表大小的估值就不准了。从文档看这是符合预期的，不过我没太理解，等我以后想通了再回来修改这一段。*
 
 #### Task4：获取路径
-最后一个 Task 相对就比较简单了，其实就是说得能拿到历史数据。这是显然的：当前的 get 方法只从 memtable 里查找键，完全没考虑 immemtables，这哪儿行呢？写进去的数一旦满了刷盘就不作数了是吧？
+最后一个 Task 相对就比较简单了，其实就是说得能拿到历史数据。这是显然的：当前的 get 方法只从 memtable 里查找键，完全没考虑 immemtables，这哪儿行呢？写进去的数一旦满了落盘了就不作数了是吧？
 
 所以就修改 get 吧。原来的结构肯定不能要了，还是优先闭包，这里显然要用 Some。把 memtable 的改造好后，如法炮制，写个遍历就好了。注意，我们之前向 imm_memtables 写的时候就是从前往后写的，所以读的时候也只需按顺序读，只要读到键，就可以根据他的值是不是空来返回结果，不需要继续读剩下的 imm_memtable 了。所以这么写完全 OK：
 ```rust,name=lsm_storage.rs
@@ -303,7 +303,106 @@ pub fn get(&self, _key: &[u8]) -> Result<Option<Bytes>> {
 很好，最后一个测试也通过了！
 
 ***
-连做题带写博客，截至目前已经花了我 5 个小时，这才只是 Day1！没办法，毕竟还不熟悉，慢慢来吧。文档最后还有几个思考题，我顶不住了，先下线了。以后再补充吧。
+连做题带写博客，截至目前已经花了我 5 个小时，这才只是 Day1！没办法，毕竟还不熟悉，慢慢来吧。这篇年内能更新完就不错了……毕竟我还得干活，还得打游戏呢。我在考虑把这篇文章拆开，每周甚至每天单独作一篇文章，但为了看着方便，先不拆了，除非以后打开文章特别卡，那到时再说。
+
+文档最后还有几个思考题，我顶不住了，先下线了。以后再补充吧。最下面甚至还有个 Bonus Tasks，讲道理这东西适合二刷的时候再搞，跳过跳过。
+
+### Day2：Merge Iterator
+Day2 还是内存表。没办法，谁让这是基础呢。这波需要结合迭代器，开始上强度了！
+
+#### Task1：内存表迭代器
+这个任务需要实现 mem_table.rs 中 StorageIterator 的四个方法，以及 scan 方法。
+
+一上来就喂了一大堆新东西进来，光一个自引用的宏就看了半天。此时我有一句 xxx 不知当讲不当讲。
+![啥啥啥](https://www.diydoutu.com/bq/2032.gif)
+
+先挑软柿子来。很明显这个 value 最简单，直接返回 item 的值就行。
+```rust,name=mem_table.rs
+fn value(&self) -> &[u8] {
+    self.borrow_item().1.as_ref()
+}
+```
+你可能想问 borrow_item 这个方法是哪里来的，其实我也不知道，打了`self.`后编译器弹出的提示里面第一个方法就是这个。不过猜也能猜到，这个方法肯定是`#[self_referencing]`这个宏，也就是文档中提到的 ouroboros 库带进来的。与之相对 borrow_map 这个方法也是有的。我贴一段 Kimi 生成的回答：
+>在 ouroboros（或类似库）里，只要字段被标记为 #[borrows(...)] 或 #[covariant] / #[not_covariant]，宏就会为 每一个普通字段（即没有被 #[borrows] 的字段）额外生成一组访问器：  
+>borrow_<字段名>() —— 只读借用  
+>borrow_<字段名>_mut() —— 可变借用  
+>into_<字段名>() —— 所有权转移  
+>笔者：那也就是除了 iter，另两个都会有
+
+同理，key 和 is_valid 也非常简单：
+```rust,name=mem_table.rs
+fn key(&self) -> KeySlice {
+    KeySlice::from_slice(self.borrow_item().0.as_ref())
+}
+
+fn is_valid(&self) -> bool {
+    // 直接判断 self.borrow_item().0 是否为空也是一样的
+    !self.key().is_empty()
+}
+```
+next 就麻烦了，怎么让他走到下一位啊？其实思路还是很简单的，难点主要在 rust 语言上了，这写的太费劲了！
+```rust,name=mem_table.rs
+fn next(&mut self) -> Result<()> {
+    let next = self.with_iter_mut(|iter| {
+        // 先把当前的迭代器取出来，并让它往后走一步
+        iter.next()
+            // 把 key/value 拿出来
+            .map(|e| (e.key().clone(), e.value().clone()))
+            // 没有更多元素了，把 item 设成空 Bytes，以便能够让 is_valid 返回 false
+            .unwrap_or_else(|| (Bytes::new(), Bytes::new()))
+    });
+    // 更新 item
+    self.with_mut(|iter| *iter.item = next);
+    Ok(())
+}
+```
+最后还得写 scan。首先映入眼帘的就是这个方法的入参：Bound 是什么玩意？仔细看了下测试 case 才明白，原来 scan 的时候是要获取一个范围内的键值对的，这个 Bound 就是范围的上下界。然后这个方法返回的就是我们刚刚写的 MemTableIterator，检索一番后发现——坏了，这回没得抄了！
+
+那就直接写吧，先不管边界，建一个结构体出来——当我这么想的时候，怎么写怎么不对劲，结构体怎么创建不出来了？actual_data 是个什么玩意？仔细看了下编译器的提示，原来又是 ouroboros 在搞鬼！ouroboros 的过程宏会自动给结构体生成一个 Builder，这时候必须用 Builder 了。先搞个框架出来。
+```rust,name=mem_table.rs
+pub fn scan(&self, _lower: Bound<&[u8]>, _upper: Bound<&[u8]>) -> MemTableIterator {
+    let builder = MemTableIteratorBuilder { 
+        map: self.map,
+        iter_builder: todo!(),
+        item: (Bytes::new(), Bytes::new()),
+    };
+    let iter = builder.build();
+    iter
+}
+```
+不出意外，iter_builder 的构造也在搞事情。这个自引用确实太烦了。那到底怎么实现呢？我们知道 SkipMapRangeIter 是一个 Range
+```rust,name=mem_table.rs
+type SkipMapRangeIter<'a> =
+    crossbeam_skiplist::map::Range<'a, Bytes, (Bound<Bytes>, Bound<Bytes>), Bytes, Bytes>;
+```
+那我们也写一个 Range 就行了，参数就是传进来的上下界。
+```rust,name=mem_table.rs
+iter_builder: |map| {
+    map.range((map_bound(_lower), map_bound(_upper)))
+},
+```
+此外还得把 map 改成 clone 的。
+
+能直接返回吗？显然不行！item 表示当前键值对，现在还是空的呢。写吧！这段很简单，和 next 方法完全一样。完整方法如下：
+```rust,name=mem_table.rs
+/// Get an iterator over a range of keys.
+pub fn scan(&self, _lower: Bound<&[u8]>, _upper: Bound<&[u8]>) -> MemTableIterator {
+    let builder = MemTableIteratorBuilder {
+        map: self.map.clone(),
+        iter_builder: |map| map.range((map_bound(_lower), map_bound(_upper))),
+        item: (Bytes::new(), Bytes::new()),
+    };
+    let mut iter = builder.build();
+    let first = iter.with_iter_mut(|iter| {
+        iter.next()
+            .map(|e| (e.key().clone(), e.value().clone()))
+            .unwrap_or_else(|| (Bytes::new(), Bytes::new()))
+    });
+    iter.with_mut(|iter| *iter.item = first);
+    iter
+}
+```
+好！两个测试都过了。Day2 难度猛增，写到这我都有点想放弃了，哎，太难了！万恶的 ouroboros！要是以后每节都来个新的第三方库，我可受不了啊！
 
 {{ admonition(type="warning", title="注意", text="施工中") }}
 ```rust,name=
