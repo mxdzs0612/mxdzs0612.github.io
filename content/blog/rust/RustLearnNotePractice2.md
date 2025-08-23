@@ -17,7 +17,7 @@ post_listing_date = "both"
 搞了这么久 Paimon，不研究 LSM Tree 的具体代码实现怎么行。久仰迟神大名，正好借学 Rust 的机会来整一波。想知道这是个什么，可以看[知乎上的项目简介](https://zhuanlan.zhihu.com/p/680608573)。
 
 参考答案: [官方](https://github.com/skyzh/mini-lsm-solution-checkpoint) [民间](https://github.com/skyzh/mini-lsm/blob/main/SOLUTIONS.md)
-> 这玩意的官方答案基本上就不是给人看的，尤其是对于 Rust 新手来说，谁会能想到这样写啊！民间版就易读很多。其实不看答案也没问题，迟神给每个子任务都写了测试，只要测试能跑过就说明（至少在当前阶段）代码没什么大问题。
+> 这玩意的官方答案基本上就不是给人看的，尤其是对于 Rust 新手来说，谁会能想到这样写啊！民间版就易读很多。其实不对答案也没问题，迟神给每个子任务都写了测试，只要测试能跑过就说明（至少在当前阶段）代码没什么大问题。
 
 [我的代码实现](https://github.com/mxdzs0612/mini-lsm)，我会尽量把每个子任务的 commit 拆开，方便回溯。
 
@@ -329,6 +329,8 @@ fn value(&self) -> &[u8] {
 >into_<字段名>() —— 所有权转移  
 >笔者：那也就是除了 iter，另两个都会有
 
+与之相对的还有 with_xxx，同样包括带 mut 的，读者自己看吧。
+
 同理，key 和 is_valid 也非常简单：
 ```rust,name=mem_table.rs
 fn key(&self) -> KeySlice {
@@ -344,7 +346,7 @@ next 就麻烦了，怎么让他走到下一位啊？其实思路还是很简单
 ```rust,name=mem_table.rs
 fn next(&mut self) -> Result<()> {
     let next = self.with_iter_mut(|iter| {
-        // 先把当前的迭代器取出来，并让它往后走一步
+        // 先把当前的迭代器取出来，并迭代到它的下一个值
         iter.next()
             // 把 key/value 拿出来
             .map(|e| (e.key().clone(), e.value().clone()))
@@ -356,9 +358,9 @@ fn next(&mut self) -> Result<()> {
     Ok(())
 }
 ```
-最后还得写 scan。首先映入眼帘的就是这个方法的入参：Bound 是什么玩意？仔细看了下测试 case 才明白，原来 scan 的时候是要获取一个范围内的键值对的，这个 Bound 就是范围的上下界。然后这个方法返回的就是我们刚刚写的 MemTableIterator，检索一番后发现——坏了，这回没得抄了！
+最后还得写 scan。首先映入眼帘的就是这个方法的入参：Bound 是什么玩意？仔细看了下测试 case 才明白，原来 scan 的时候是要获取一个范围内的键值对的，这个 Bound 就是范围的上下界。然后这个方法返回的就是我们刚刚写的 MemTableIterator，检索一番后发现——坏了，没有类似代码，这回没得抄了！
 
-那就直接写吧，先不管边界，建一个结构体出来——当我这么想的时候，怎么写怎么不对劲，结构体怎么创建不出来了？actual_data 是个什么玩意？仔细看了下编译器的提示，原来又是 ouroboros 在搞鬼！ouroboros 的过程宏会自动给结构体生成一个 Builder，这时候必须用 Builder 了。先搞个框架出来。
+那就直接硬写吧，先不管边界，建一个结构体出来——当我这么想的时候，怎么写怎么不对劲，结构体怎么创建不出来了？actual_data 是个什么玩意？仔细看了下编译器的提示，原来又是 ouroboros 在搞鬼！ouroboros 的过程宏会自动给结构体生成一个 Builder，想不用都不行。先搞个框架出来。
 ```rust,name=mem_table.rs
 pub fn scan(&self, _lower: Bound<&[u8]>, _upper: Bound<&[u8]>) -> MemTableIterator {
     let builder = MemTableIteratorBuilder { 
@@ -370,20 +372,18 @@ pub fn scan(&self, _lower: Bound<&[u8]>, _upper: Bound<&[u8]>) -> MemTableIterat
     iter
 }
 ```
-不出意外，iter_builder 的构造也在搞事情。这个自引用确实太烦了。那到底怎么实现呢？我们知道 SkipMapRangeIter 是一个 Range
+不出意外，iter_builder 的构造也在搞事情。这个自引用确实太烦了。那到底怎么实现呢？我们知道这是一个 SkipMapRangeIter，而 SkipMapRangeIter 是一个 Range：
 ```rust,name=mem_table.rs
 type SkipMapRangeIter<'a> =
     crossbeam_skiplist::map::Range<'a, Bytes, (Bound<Bytes>, Bound<Bytes>), Bytes, Bytes>;
 ```
-那我们也写一个 Range 就行了，参数就是传进来的上下界。
+那我们也新建一个 Range 就行了，参数就是传进来的上下界。
 ```rust,name=mem_table.rs
 iter_builder: |map| {
     map.range((map_bound(_lower), map_bound(_upper)))
 },
 ```
-此外还得把 map 改成 clone 的。
-
-能直接返回吗？显然不行！item 表示当前键值对，现在还是空的呢。写吧！这段很简单，和 next 方法完全一样。完整方法如下：
+此外还得把 map 改成 clone 的。这时候编译就通过了。但能像现在这样直接返回吗？显然不行！item 表示当前键值对，现在还是空的呢。写吧！这段很简单，因为这个时候，Iterator 已经初始化好了，next 拿到的下一个值就是 lower 限定后的、迭代器里的第一个值，所以此处和前面 next 方法完全一样，抄下来即可。完整代码如下：
 ```rust,name=mem_table.rs
 /// Get an iterator over a range of keys.
 pub fn scan(&self, _lower: Bound<&[u8]>, _upper: Bound<&[u8]>) -> MemTableIterator {
@@ -402,7 +402,67 @@ pub fn scan(&self, _lower: Bound<&[u8]>, _upper: Bound<&[u8]>) -> MemTableIterat
     iter
 }
 ```
-好！两个测试都过了。Day2 难度猛增，写到这我都有点想放弃了，哎，太难了！万恶的 ouroboros！要是以后每节都来个新的第三方库，我可受不了啊！
+好！两个测试都过了。
+
+Day2 难度猛增，写到这我都有点想放弃了，哎，太痛苦了！万恶的 ouroboros！要是以后每节都来个新的第三方库，我可顶不住啊！
+
+#### Task2：合并迭代器
+这节我们要实现的还是这四兄弟，以及一个 create 方法。仔细一看，哦，原来 StorageIterator 是个特质，之前还没留意。
+
+这节不能愣头写，得先知道要我们实现什么。仔细阅读文档，能够得知这里需要合并多个内存表，返回最新的那个值。里面还用了二叉堆排序输出，
+
+前面三个都很简单，无非就是拿的东西变成了被 Option 包起来了的特质泛型，多拆几层就是了：
+```rust,name=iterators/merge_iterator.rs
+fn key(&self) -> KeySlice {
+    self.current.as_ref().unwrap().1.key()
+}
+
+fn value(&self) -> &[u8] {
+    self.current.as_ref().unwrap().1.value()
+}
+
+fn is_valid(&self) -> bool {
+    self.current.as_ref().map_or(false, |iter| iter.1.is_valid())
+}
+```
+这里还用到了[错误处理](../rust-learn-note-adv-10/#dai-mo-ren-zhi-de-ying-she)一节中的映射方法，挺好。
+
+困难的还是 next。我们先来写 create，把困难留在最后。create 就很简单了，老样子，先搭个框子：
+```rust,name=iterators/merge_iterator.rs
+pub fn create(iters: Vec<Box<I>>) -> Self {
+    let mut merge_iterator = MergeIterator {
+        iters: iters
+            .into_iter()
+            .enumerate()
+            .map(|(idx, boxed)| HeapWrapper(idx, boxed))
+            .collect::<BinaryHeap<_>>(),
+        current: None,
+    };
+    merge_iterator.current = merge_iterator.iters.pop();
+    merge_iterator
+}
+```
+iters 就是把入参的 Vec 转换成 BinaryHeap，current 就是从创建好的 iter 里取一个出来，当然得先创建好。这段 iters 的构造是 Kimi 写的，我让他帮我搓一个`Vec<Box<I>>`转换成`BinaryHeap<HeapWrapper<I>>`（其中后者的结构体是`struct HeapWrapper<I: StorageIterator>(pub usize, pub Box<I>)`）的函数，就是这个效果了。看上去很合理，但是不是还缺点什么？看文档怎么说：
+>Note that you will need to handle errors (i.e., when an iterator is not valid) and ensure that the latest version of a key-value pair comes out.
+
+懂了，还需要给迭代器加个 filter，把无效的值过滤掉。完整代码如下：
+```rust,name=iterators/merge_iterator.rs
+pub fn create(iters: Vec<Box<I>>) -> Self {
+    let mut merge_iterator = MergeIterator {
+        iters: iters
+            .into_iter()
+            .filter(|i| i.is_valid())
+            .enumerate()
+            .map(|(idx, boxed)| HeapWrapper(idx, boxed))
+            .collect::<BinaryHeap<_>>(),
+        current: None,
+    };
+    merge_iterator.current = merge_iterator.iters.pop();
+    merge_iterator
+}
+```
+最后终于到 next 了，直接来吧。
+> 这段代码已经写完了，有空再补文章
 
 {{ admonition(type="warning", title="注意", text="施工中") }}
 ```rust,name=
