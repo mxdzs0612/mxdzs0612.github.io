@@ -1,8 +1,8 @@
 +++
-title = "Rust 项目实战（二）：Mini-LSM（更新至1-1）"
+title = "Rust 项目实战（二）：Mini-LSM（更新至1-2）"
 slug = "rust_learn_note_prac_2"
 date = 2025-08-13
-updated = 2025-08-21
+updated = 2025-08-25
 description = "迟策大佬的 Mini-LSM 项目的通关笔记"
 # draft = true
 [taxonomies]
@@ -17,7 +17,7 @@ post_listing_date = "both"
 搞了这么久 Paimon，不研究 LSM Tree 的具体代码实现怎么行。久仰迟神大名，正好借学 Rust 的机会来整一波。想知道这是个什么，可以看[知乎上的项目简介](https://zhuanlan.zhihu.com/p/680608573)。
 
 参考答案: [官方](https://github.com/skyzh/mini-lsm-solution-checkpoint) [民间](https://github.com/skyzh/mini-lsm/blob/main/SOLUTIONS.md)
-> 这玩意的官方答案基本上就不是给人看的，尤其是对于 Rust 新手来说，谁会能想到这样写啊！民间版就易读很多。其实不对答案也没问题，迟神给每个子任务都写了测试，只要测试能跑过就说明（至少在当前阶段）代码没什么大问题。
+> 这玩意的官方答案基本上就不是给人看的，尤其是对于 Rust 新手来说，谁会能想到这样写啊！民间版就易读很多。其实不对答案也没问题，迟神给每个子任务都写了测试，只要测试能跑过就说明（至少在当前阶段）代码是 ok 的。
 
 [我的代码实现](https://github.com/mxdzs0612/mini-lsm)，我会尽量把每个子任务的 commit 拆开，方便回溯。
 
@@ -425,9 +425,9 @@ fn is_valid(&self) -> bool {
     self.current.as_ref().map_or(false, |iter| iter.1.is_valid())
 }
 ```
-这里还用到了[错误处理](../rust-learn-note-adv-10/#dai-mo-ren-zhi-de-ying-she)一节中的映射方法，挺好。
+这里还用到了[错误处理](../rust-learn-note-adv-10/#dai-mo-ren-zhi-de-ying-she)一节中的映射方法 map_or，挺好。
 
-困难的还是 next。我们先来写 create，把困难留在最后。create 就很简单了，老样子，先搭个框子：
+困难的还是 next。我们先来写 create，把困难留在最后。create 比 task1 的还要容易点，老样子，先搭个框子：
 ```rust,name=iterators/merge_iterator.rs
 pub fn create(iters: Vec<Box<I>>) -> Self {
     let mut merge_iterator = MergeIterator {
@@ -442,7 +442,7 @@ pub fn create(iters: Vec<Box<I>>) -> Self {
     merge_iterator
 }
 ```
-iters 就是把入参的 Vec 转换成 BinaryHeap，current 就是从创建好的 iter 里取一个出来，当然得先创建好。这段 iters 的构造是 Kimi 写的，我让他帮我搓一个`Vec<Box<I>>`转换成`BinaryHeap<HeapWrapper<I>>`（其中后者的结构体是`struct HeapWrapper<I: StorageIterator>(pub usize, pub Box<I>)`）的函数，就是这个效果了。看上去很合理，但是不是还缺点什么？看文档怎么说：
+iters 就是把入参的 Vec 转换成 BinaryHeap，current 代表当前已经读取了的最小键元素，构造的时候就是从创建好的 iter 里取一个出来，当然得先创建好。这段 iters 的构造是 Kimi 写的，我让他帮我搓一个`Vec<Box<I>>`转换成`BinaryHeap<HeapWrapper<I>>`（其中后者的结构体是`struct HeapWrapper<I: StorageIterator>(pub usize, pub Box<I>)`）的函数，就是这个效果了，不过用到的这几个方法也都是迭代器的常用方法。看上去很合理，排序也已经由堆来实现了，但是不是还缺点什么？看文档怎么说：
 >Note that you will need to handle errors (i.e., when an iterator is not valid) and ensure that the latest version of a key-value pair comes out.
 
 懂了，还需要给迭代器加个 filter，把无效的值过滤掉。完整代码如下：
@@ -461,9 +461,234 @@ pub fn create(iters: Vec<Box<I>>) -> Self {
     merge_iterator
 }
 ```
-最后终于到 next 了，直接来吧。
-> 这段代码已经写完了，有空再补文章
+最后终于到 next 了，开始写之前必须弄明白这个方法需要做什么。简单讲，就是要合并多个内存表（也就是 task1 实现的迭代器），返回“下一个”不重复的最小键，并且当出现相同键时优先选取索引更小的那个迭代器里的值。二叉堆 BinaryHeap 用于维持各子迭代器当前元素的最小值队列，这个二叉堆存了一个 HeapWrapper(idx, iter)。代码里能看到
+```rust,name=iterators/merge_iterator.rs
+impl<I: StorageIterator> Ord for HeapWrapper<I> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.1
+            .key()
+            .cmp(&other.1.key())
+            .then(self.0.cmp(&other.0))
+            .reverse()
+    }
+}
+```
+也就是说比较规则是按 iter 的 key 升序；若相等则按 idx 升序。最后那个 reverse 是因为 Rust 的 BinaryHeap 是大根堆。这里堆中的元素就是待读取的候选，current 则是已经读出来的的元素。
 
+于是，我们需要做的，就是把堆顶的元素和 current 进行比较，清理所有无效和旧的值，并找出新的最小的那个 current。举个例子，I0: [1, 3], I1: [1, 2], I2: [2, 3]，初始 current = (I0, 1)。next 时在堆顶的 I1 发现了 key=1，等于current 的 1，则推进到 2；然后推进 I0 到 3 再压回堆；新的 current 变为最小的 2（来自 I1 或 I2 中索引更小者）。这样键 1 只输出一次。后续其他值也是同理。
+
+最后，文档要求我们不能用`?`，必须自己处理错误，否则会有个测试过不去。综上，我的实现如下：
+```rust,name=iterators/merge_iterator.rs
+fn next(&mut self) -> Result<()> {
+    // 必须这么写，不能直接去调前面实现的 key 方法，否则会报同时可变不可变引用的错误
+    let k = self.current.as_ref().unwrap().1.key();
+    // 参考文档用 peek_mut 循环取值
+    while let Some(mut iter) = self.iters.peek_mut() {
+        // 不是我喜欢的类型，直接拒绝（划掉）
+        // 不是可用的迭代器，直接弹出，因为已经走到尾了
+        if !iter.1.is_valid() {
+            PeekMut::pop(iter);
+            continue;
+        }
+        // iters 是已经在堆里排过序的
+        // 出现这种情况意味着堆里的最小 key 已经比 current 大了，于是退出循环
+        if iter.1.key() > k {
+            break;
+        }
+        // 调用 next 前进一步并自己处理错误
+        // 不要用 ?，听人劝吃饱饭
+        // 调用 next 是为了去重，当前键已经被 current 拿到了，理论上这个时候取到的 iter.1.key() 应该都等于 k，不会有更小的了
+        // 也就是说，这是在弹出其他迭代器的旧数据
+        if let Err(e) = iter.1.next() {
+            PeekMut::pop(iter);
+            return Err(e);
+        }
+        // 堆空了的时候，即走到尾部的时候，堆里会残留一个空白的无效元素
+        // 再次 pop 以保证把已经耗尽了的迭代器从堆里清出去
+        if !iter.1.is_valid() {
+            PeekMut::pop(iter);
+        }
+    }
+    let mut cur = self.current.take().unwrap();
+    // 调用 next 并自己处理错误 + 1
+    // current 的迭代器也前进一位
+    if let Err(e) = cur.1.next() {
+        self.current = self.iters.pop();
+        return Err(e);
+    }
+    // 如果没出错，就把 cur 重新放回堆里，参与下一轮选最小 current 的竞争
+    if cur.1.is_valid() {
+        self.iters.push(cur);
+    }
+    // 即从堆中取出当前全局最小的 iter 作为新的 current
+    self.current = self.iters.pop();
+    Ok(())
+}
+```
+这写的是不是很过瘾？然而，单这一节写代码花了我周末的一下午，写博客又花了一中午，折磨……
+
+#### Task3：融合迭代器
+本节最痛苦的部分已经过去了，剩下两个任务都相对轻松一些。
+
+FusedIterator 是 Rust 的一个特质，当然这节并没用到特质，而是自己实现了一个。这节要写的还是这四个方法，轻车熟路了，轻轻松松。
+
+既然文档说测试不测 LsmIterator，这里就先应付一下：
+```rust,name=lsm_iterator.rs
+fn is_valid(&self) -> bool {
+    self.inner.is_valid()
+}
+
+fn key(&self) -> &[u8] {
+    self.inner.key().raw_ref()
+}
+
+fn value(&self) -> &[u8] {
+    self.inner.value()
+}
+
+fn next(&mut self) -> Result<()> {
+    self.inner.next()
+}
+```
+FusedIterator 还是得稍微认真一点，至少 has_errored 这个参数不能 never read 吧：
+```rust,name=lsm_iterator.rs
+fn is_valid(&self) -> bool {
+    !self.has_errored && self.iter.is_valid()
+}
+
+fn key(&self) -> Self::KeyType<'_> {
+    self.iter.key()
+}
+
+fn value(&self) -> &[u8] {
+    self.iter.value()
+}
+
+fn next(&mut self) -> Result<()> {
+    self.iter.next()
+}
+```
+真有这么简单吗？一运行测试果然跪了，仔细看看这节测试在干什么：
+```rust,name=week1_day2.rs
+let iter = MockIterator::new_with_error(
+    vec![
+        (Bytes::from("a"), Bytes::from("1.1")),
+        (Bytes::from("a"), Bytes::from("1.1")),
+    ],
+    1,
+);
+let mut fused_iter = FusedIterator::new(iter);
+assert!(fused_iter.is_valid());
+assert!(fused_iter.next().is_err());
+assert!(!fused_iter.is_valid());
+assert!(fused_iter.next().is_err());
+assert!(fused_iter.next().is_err());
+```
+还是没看懂？再来读读代码文件结构体上面的这段注释：
+```rust,name=lsm_iterator.rs
+/// A wrapper around existing iterator, will prevent users from calling `next` when the iterator is
+/// invalid. If an iterator is already invalid, `next` does not do anything. If `next` returns an error,
+/// `is_valid` should return false, and `next` should always return an error.
+pub struct FusedIterator<I: StorageIterator> {
+    iter: I,
+    has_errored: bool,
+}
+```
+next 还得进行容错，不能每调用一次就真的去取 next，迭代器不可用的时候要阻止这种行为。这里的 Result 还是 anyhow 包的，不是标准的，返回错误必须得用它的宏。虽然之前就注意到这一点了，但这个时候才第一次被恶心到。然后，调用 next 后也得再检查一下，还是上闭包。
+```rust,name=lsm_iterator.rs
+fn next(&mut self) -> Result<()> {
+    if self.has_errored {
+        return Err(anyhow!(""));
+    }
+    self.iter.next().inspect_err(|_| self.has_errored = true)
+}
+```
+
+#### Task4：扫描
+最后一步，提供一个 scan 接口给引擎调用，只需要实现这一个方法。当然，前面偷懒没写的 LsmIterator 还是得还债的。看到这个上下界，熟悉的感觉又回来了，还没忘记 Day1 的东西吧？老规矩，先搭个框子。
+```rust,name=lsm_storage.rs
+pub fn scan(
+    &self,
+    _lower: Bound<&[u8]>,
+    _upper: Bound<&[u8]>,
+) -> Result<FusedIterator<LsmIterator>> {
+    let mut iters = vec![];
+    let iter = LsmIterator::new(MergeIterator::create(iters))?;
+    Ok(FusedIterator::new(iter))
+}
+```
+iters 里面塞什么呢？肯定就是 scan 要读的东西。再结合这个上下界，很明显，这里面要传的就是 Day1 写的内存表和不可变内存表。差不多就是这样：
+```rust,name=lsm_storage.rs
+let read_lock = self.state.read();
+iters.push(Box::new(read_lock.memtable.scan(_lower, _upper)));
+iters.append(&mut read_lock.imm_memtables.clone().into_iter().map(|i| Box::new(i.scan(_lower, _upper))).collect());
+```
+这样就行了吗？并不行！跑测试一看，怎么被删掉的 key 还在里面呢？说明漏东西了。仔细一想，前面刚实现的 next 方法还没用呢。自然而然，要对这个 iter 使用了。完整代码如下：
+```rust,name=lsm_storage.rs
+pub fn scan(
+    &self,
+    _lower: Bound<&[u8]>,
+    _upper: Bound<&[u8]>,
+) -> Result<FusedIterator<LsmIterator>> {
+    let mut iters = vec![];
+    let read_lock = self.state.read();
+    iters.push(Box::new(read_lock.memtable.scan(_lower, _upper)));
+    iters.append(
+        &mut read_lock
+            .imm_memtables
+            .clone()
+            .into_iter()
+            .map(|i| Box::new(i.scan(_lower, _upper)))
+            .collect(),
+    );
+    let mut iter = LsmIterator::new(MergeIterator::create(iters))?;
+    while !iter.key().is_empty() && iter.value().is_empty() {
+        // 这个问号加不加都行，最好还是加
+        iter.next()?;
+    }
+    Ok(FusedIterator::new(iter))
+}
+```
+然后，该还债了。LsmIterator 的 next 方法也要做一波判断，逻辑是一样的：
+```rust,name=lsm_iterator.rs
+fn next(&mut self) -> Result<()> {
+    let res = self.inner.next();
+    if res.is_ok() && !self.key().is_empty() && self.value().is_empty() {
+        self.next()
+    } else {
+        res
+    }
+}
+```
+怎么还是不行？仔细一看报错，MergeIterator 的实现也有问题！债越来越多了。
+
+报错是代码中对一个 None 值调用了 unwrap()。MergeIterator 的几兄弟全有这个问题，那就全都要改了。用 unwrap_or_else 在为空是抛默认值就行：
+```rust,name=iterators/merge_iterator.rs
+fn key(&self) -> KeySlice {
+    self.current
+        .as_ref()
+        .map(|iter| iter.1.key())
+        .unwrap_or_else(|| KeySlice::from_slice(&[]))
+}
+
+fn value(&self) -> &[u8] {
+    self.current
+        .as_ref()
+        .map(|iter| iter.1.value())
+        .unwrap_or(&[])
+}
+
+fn next(&mut self) -> Result<()> {
+    let Some(iter) = self.current.as_ref() else {
+        return Ok(());
+    };
+    let k = iter.1.key();
+    // ...
+}
+```
+行了，终于能通过测试了。
+
+### Day3：Block
 {{ admonition(type="warning", title="注意", text="施工中") }}
 ```rust,name=
 
