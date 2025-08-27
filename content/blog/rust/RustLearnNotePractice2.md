@@ -17,23 +17,27 @@ post_listing_date = "both"
 搞了这么久 Paimon，不研究 LSM Tree 的具体代码实现怎么行。久仰迟神大名，正好借学 Rust 的机会来整一波。想知道这是个什么，可以看[知乎上的项目简介](https://zhuanlan.zhihu.com/p/680608573)。
 
 参考答案: [官方](https://github.com/skyzh/mini-lsm-solution-checkpoint) [民间](https://github.com/skyzh/mini-lsm/blob/main/SOLUTIONS.md)
-> 这玩意的官方答案基本上就不是给人看的，尤其是对于 Rust 新手来说，谁会能想到这样写啊！民间版就易读很多。其实不对答案也没问题，迟神给每个子任务都写了测试，只要测试能跑过就说明（至少在当前阶段）代码是 ok 的。
+> 这玩意的官方答案基本上就不是给人看的，尤其是对于 Rust 新手来说，里面存在各种令人头晕目眩的操作，谁会能想到这样写啊！民间版就易读很多。其实不对答案也没问题，迟神给每个子任务都写了测试，只要测试能跑过就说明（至少在当前阶段）代码是 ok 的，不过可能通不过后续测试，需要还债。
+> 
+> 个人推荐的几个社区实现：[redixhumayun](https://github.com/redixhumayun/mini-lsm/) [Jerry-GK](https://github.com/Jerry-GK/MyLSM) [ping-jz](https://github.com/ping-jz/mini-lsm-solution)
 
 [我的代码实现](https://github.com/mxdzs0612/mini-lsm)，我会尽量把每个子任务的 commit 拆开，方便回溯。
 
 ***
 ![All](https://skyzh.github.io/mini-lsm/lsm-tutorial/00-full-overview.svg)
 
-这是项目的整体结构，共三周，每周 7 小节，可以看到还是非常强大和全面的。
+这是项目的整体结构，共三周，每周 7 小节，分为 6 个 大活 + 最后的 1 个甜点时间，可以看到还是非常强大和全面的。正因如此，我更新速度预计会很慢，年内能写完就不错了。
 
-本文暂时省略 LSM 的介绍，详细信息可以参考 [RocksDB Wiki](https://github.com/facebook/rocksdb/wiki/RocksDB-Overview)。
+本文暂时不会对 LSM 进行介绍，基本概念和术语可以参考万恶之源 [RocksDB Wiki](https://github.com/facebook/rocksdb/wiki/RocksDB-Overview)。
 
-本文不会复述题目内容，因此不能代替项目文档。我默认读者阅读本文前已经看过对应章节的项目文档。此外，环境安装、测试怎么跑等基础内容在本文中也不再赘述，请自行从项目文档里面找。
+本文也不会复述题目内容，因此不能代替项目文档。我默认读者阅读本文前已经看过对应章节的项目文档（下文简称“文档”）。包括环境安装、测试怎么跑等基础内容在本文中也不再赘述，请自行从文档里面找。
+
+每节文档下面都会有个思考题，我姑且都会做一下，但由于没有参考答案我不确定做的对不对，这部分内容均会折叠起来。欢迎留言交流探讨。
 
 ## Week 1：Mini-LSM
 ![week1](https://skyzh.github.io/mini-lsm/lsm-tutorial/week1-overview.svg)
 
-在 Week 1，我们将构建存储格式，系统的读写路径，并实现一个可用的基于 LSM 树的键值存储。本章结束时，引擎理应具备除持久化外，一个 LSM 树的全部必备功能。
+在 Week 1，我们将构建存储格式，系统的读写路径，并实现一个可用的基于 LSM 树的键值存储。本章结束时，项目理应具备除真正在磁盘上的持久化外，一个 LSM 树的全部必备功能。
 
 ### Day1：Memtables
 本节是内存表读写的实现。这是一个 LSM 树的最基本内容，放在最前面理所应当。
@@ -62,7 +66,7 @@ pub fn create(_id: usize) -> Self {
     }
 }
 ```
->其实理论上应该把变量名开头的下划线去掉，因为这时候这些变量已经是使用了的，并非未使用的。不过我知道写完 day1 才意识到这一点，算了就这样吧，以后再说。
+>其实理论上应该把变量名开头的下划线去掉，因为 Rust 中变量以下划线开头是为了消除变量未使用的告警，但给方法添加内容后这些变量已经是使用了的，而非未使用的。不过我直到写完 day1 才意识到这一点，算了就这样吧，不改问题也不大。
 
 接下来写 get。get 肯定就是根据键去取结构体中 map 属性对应的值了。
 ```rust,name=mem_table.rs
@@ -87,7 +91,7 @@ pub fn put(&self, _key: &[u8], _value: &[u8]) -> Result<()> {
 注意文档中有句关键的提示：
 >  As our memtable implementation only requires an immutable reference for put, you ONLY need to take the read lock on state in order to modify the memtable.
 
-什么锁？怎么获取锁？什么都不知道怎么办？一翻上下翻找后，我发现内置的 MiniLsm 这个结构体默认已经实现了一些方法，主要来看这个方法：
+什么锁？怎么获取锁？什么都不知道怎么办？一番上下翻找后，我发现内置的 MiniLsm 这个结构体默认已经实现了一些方法，主要来看 force_flush 这个方法：
 ```rust,name=lsm_storage.rs
 pub fn force_flush(&self) -> Result<()> {
     if !self.inner.state.read().memtable.is_empty() {
@@ -100,7 +104,7 @@ pub fn force_flush(&self) -> Result<()> {
     Ok(())
 }
 ```
-具体在做什么不用管（应该能猜到和落盘有关），我们只需要知道它调用的`self.inner`就是我们正在开发的 LsmStorageInner。这样就有一个大概思路了。如法炮制，还是先来实现 get。这里会比任务 1 中复杂一些，主要在于需要获取锁，然后返回的结果又用 Result 包了一下。其实也没复杂多少，顺手的事：
+具体在做什么不用管（应该能猜到和落盘有关），我们只需要知道它调用的`self.inner`就是我们正在开发的 LsmStorageInner。哦，他就是在获取锁，这样就有一个大概思路了。如法炮制，还是先来实现 get。这里会比任务 1 中复杂一些，主要在于需要获取锁，然后返回的结果又用 Result 包了一下。其实也没复杂多少，顺手的事：
 ```rust,name=lsm_storage.rs
 /// Get a key from the storage. In day 7, this can be further optimized by using a bloom filter.
 pub fn get(&self, _key: &[u8]) -> Result<Option<Bytes>> {
@@ -183,14 +187,14 @@ fn test_task3_freeze_on_capacity() {
 先来写 force_freeze_memtable。这个方法要做的事情，就是在它无论因为什么而被调用到了的时候，就把当前 memtable 写到 imm_memtables 里面。注意到文档中还有句话
 >You can simply assign the next memtable id as self.next_sst_id(). Note that the imm_memtables stores the memtables from the latest one to the earliest one. That is to say, imm_memtables.first() should be the last frozen memtable.
 
-我们先来看看这个 next_sst_id：
+我们先来看看他说的这个 next_sst_id：
 ```rust,name=lsm_storage.rs
 pub(crate) fn next_sst_id(&self) -> usize {
     self.next_sst_id
         .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
 }
 ```
-next_sst_id 是一个 AtomicUsize。注意到 approximate_size 也是一个 AtomicUsize，这就是在提示我们 approximate_size 仿照这个改就可以了。此外，这段话还告诉我们 imm_memtables 需要头插，那没办法了，只能这么写：
+next_sst_id 是一个 AtomicUsize。注意到 approximate_size 也是一个 AtomicUsize，这就是在提示我们 approximate_size 仿照这个改就可以了。此外，这段话还告诉我们 imm_memtables 需要头插，那没办法了，只能用 insert 了：
 ```rust,name=lsm_storage.rs
 // _state_lock_observer 暂时不知道是做什么用的，先不管它
 pub fn force_freeze_memtable(&self, _state_lock_observer: &MutexGuard<'_, ()>) -> Result<()> {
@@ -223,7 +227,7 @@ pub fn put(&self, _key: &[u8], _value: &[u8]) -> Result<()> {
 ```
 这个时候，主动调用的测试就通过了。
 
-然后再来搞被动调用的。这需要我们处理增/删内存表元素的代码，每修改一个，就要做一次判断，看有没有达到配置的上限。
+然后再来搞被动调用的，也就是满了自动冻结。这需要我们处理增/删内存表元素的代码，每修改一个，就要做一次判断，看有没有达到配置的上限。
 ```rust,name=lsm_storage.rs
 /// Put a key-value pair into the storage by writing into the current memtable.
 pub fn put(&self, _key: &[u8], _value: &[u8]) -> Result<()> {
@@ -240,7 +244,7 @@ pub fn put(&self, _key: &[u8], _value: &[u8]) -> Result<()> {
     res
 }
 ```
-运行测试——坏了，怎么卡住了？卡住肯定是死锁了。为什么会卡住？还记不记得 force_freeze_memtable 中拿了写锁，但是这个方法里调用 force_freeze_memtable 的时候，读锁还在作用域没释放呢。那咋办呢？只能手动 drop 了。我们把变量也改个名字吧，看的更清楚：
+运行测试——坏了，怎么卡住了？卡住肯定是死锁了。为什么会卡住？还记不记得 force_freeze_memtable 中拿了写锁，但是这个方法里调用 force_freeze_memtable 的时候，读锁还在作用域没释放呢。那咋办呢？只能手动 drop 了（如果想不到要 drop，看一眼本文最后的思考题，里面有提示）。我们把变量也改个名字吧，看的更清楚：
 ```rust,name=lsm_storage.rs
 /// Put a key-value pair into the storage by writing into the current memtable.
 pub fn put(&self, _key: &[u8], _value: &[u8]) -> Result<()> {
@@ -261,7 +265,7 @@ pub fn put(&self, _key: &[u8], _value: &[u8]) -> Result<()> {
 **补充**：仔细看看文档，能够看到了这段
 >Because there could be multiple threads getting data into the storage engine, force_freeze_memtable might be called concurrently from multiple threads. You will need to think about how to avoid race conditions in this case.
 
-原来还需要我们处理并发问题，并且测试测不出来。好吧，我就勉为其难地先加一个双重检查锁：
+原来还需要我们处理并发问题，并且测试测不出来。好吧，我就勉为其难地先加一个最简单的双重检查锁：
 ```rust,name=lsm_storage.rs
 /// Put a key-value pair into the storage by writing into the current memtable.
 pub fn put(&self, _key: &[u8], _value: &[u8]) -> Result<()> {
@@ -279,12 +283,12 @@ pub fn put(&self, _key: &[u8], _value: &[u8]) -> Result<()> {
     res
 }
 ```
-*此处有个问题，如果相同的键多次写入，approximate_size 会一直增加，但实际 map 里的内容并没增加，内存表大小的估值就不准了。从文档看这是符合预期的，不过我没太理解，等我以后想通了再回来修改这一段。*
+此外还有个问题，如果相同的键多次写入，approximate_size 会一直增加，但实际 map 里的内容并没增加，内存表大小的估值就不准了。从文档看这是符合预期的，不过这也还算合理，毕竟内存表存的东西实实在在增加了。
 
-#### Task4：获取路径
-最后一个 Task 相对就比较简单了，其实就是说得能拿到历史数据。这是显然的：当前的 get 方法只从 memtable 里查找键，完全没考虑 immemtables，这哪儿行呢？写进去的数一旦满了落盘了就不作数了是吧？
+#### Task4：读内存表
+最后一个 Task 相对就比较简单了，其实就是说得能拿到之前批次的数据。这是显然的：当前的 get 方法只从 memtable 里查找键，完全没考虑 immemtables，这哪儿行呢？写进去的数一旦满了落盘了就不作数了是吧？
 
-所以就修改 get 吧。原来的结构肯定不能要了，还是优先闭包，这里显然要用 Some。把 memtable 的改造好后，如法炮制，写个遍历就好了。注意，我们之前向 imm_memtables 写的时候就是从前往后写的，所以读的时候也只需按顺序读，只要读到键，就可以根据他的值是不是空来返回结果，不需要继续读剩下的 imm_memtable 了。所以这么写完全 OK：
+所以就修改 get 吧。原来的结构肯定不能要了，还是优先闭包，这里显然要用 Some。把 memtable 的改造好后，如法炮制，针对 Vector 写个遍历就好了。注意，我们之前向 imm_memtables 写的时候就是从前往后写的，所以读的时候也只需按顺序读，只要读到键，就可以根据他的值是不是空来返回结果，不需要继续读剩下的 imm_memtable 了（因为就算读到读的也是过期数据，没有任何价值）。所以这么写完全 OK：
 ```rust,name=lsm_storage.rs
 /// Get a key from the storage. In day 7, this can be further optimized by using a bloom filter.
 pub fn get(&self, _key: &[u8]) -> Result<Option<Bytes>> {
@@ -304,8 +308,38 @@ pub fn get(&self, _key: &[u8]) -> Result<Option<Bytes>> {
 
 ***
 连做题带写博客，截至目前已经花了我 5 个小时，这才只是 Day1！没办法，毕竟还不熟悉，慢慢来吧。这篇年内能更新完就不错了……毕竟我还得干活，还得打游戏呢。我在考虑把这篇文章拆开，每周甚至每天单独作一篇文章，但为了看着方便，先不拆了，除非以后打开文章特别卡，那到时再说。
+<details>
+<summary>思考题</summary>
+<b>Test Your Understanding</b>
 
-文档最后还有几个思考题，我顶不住了，先下线了。以后再补充吧。最下面甚至还有个 Bonus Tasks，讲道理这东西适合二刷的时候再搞，跳过跳过。
+- Why doesn't the memtable provide a delete API?
+  - 原因很多，比如说有这样一个场景：插入——更新——删除，如果真的物理删除了，是有可能去读取到第一次插入的那个旧值的，写个空值就能规避这种问题。此外，LSM 树常常也是需要版本控制的，用写空值替代物理删除既省事效率又高，比直接删除更好。
+- Does it make sense for the memtable to store all write operations instead of only the latest version of a key? For example, the user puts a->1, a->2, and a->3 into the same memtable.
+  - 对同一个内存表，完全不需要。因为最终起作用的值还是只有最后写入的那个，在单个内存表里面的数据是同一批写入的，也没有回溯或者版本控制的要求。
+- Is it possible to use other data structures as the memtable in LSM? What are the pros/cons of using the skiplist?
+  - 有肯定是有的，比如 RocksDB 还可以选哈希跳表，用哈希链表和 B+ 树应该也可以。
+  - 跳表优势在于读写性能都是 O(log n)，支持 LSM 常见的范围查询（比如下一节中大量存在的 Bound），还具备并发写的能力。劣势在于有额外维护索引的成本，然后读可能会比那帮 O(1) 的家伙慢一些，且性能不稳定，极端情况下性能可能会退化。
+- Why do we need a combination of state and state_lock? Can we only use state.read() and state.write()?
+  - 组合的优势在于读取 state 通常不需要获取锁，这样有助于提高并发性能，减少锁竞争。
+  - 如果能保证复合操作原子性的话理论上应该也可以，但通常不能。
+- Why does the order to store and to probe the memtables matter? If a key appears in multiple memtables, which version should you return to the user?
+  - 因为新数据会覆盖旧的，内存表的顺序就是新旧的保证。
+  - 拿最后写入，也就是版本号最大的那个。
+- Is the memory layout of the memtable efficient / does it have good data locality? (Think of how Byte is implemented and stored in the skiplist...) What are the possible optimizations to make the memtable more efficient?
+  - 没有，这是跳表这个数据结构决定的。
+  - Byte 本质上是指针，可以考虑预分配连续的内存。
+- So we are using parking_lot locks in this course. Is its read-write lock a fair lock? What might happen to the readers trying to acquire the lock if there is one writer waiting for existing readers to stop?
+  - 显然是非公平读写锁。
+  - 可能会优先获取到读锁，导致写饥饿。
+- After freezing the memtable, is it possible that some threads still hold the old LSM state and wrote into these immutable memtables? How does your solution prevent it from happening?
+  - 不可能。
+  - 在冻结内存表之前已经获取到写锁了，而冻结后 imm_memtables 是不可变的。
+- There are several places that you might first acquire a read lock on state, then drop it and acquire a write lock (these two operations might be in different functions but they happened sequentially due to one function calls the other). How does it differ from directly upgrading the read lock to a write lock? Is it necessary to upgrade instead of acquiring and dropping and what is the cost of doing the upgrade?
+  - 确实有，升级可能导致死锁。
+  - 没有必要吧，升级需要重新做状态检查。
+</details>
+
+文档最后还有几个思考题，因为没有答案不确定对不对，我把我的想法折叠起来写在了上面，题目就不翻译了，感兴趣的读者可以自行点击展开阅读。最下面甚至还有个 Bonus Tasks，讲道理这东西适合二刷的时候再搞，跳过跳过～
 
 ### Day2：Merge Iterator
 Day2 还是内存表。没办法，谁让这是基础呢。这波需要结合迭代器，开始上强度了！
@@ -322,14 +356,14 @@ fn value(&self) -> &[u8] {
     self.borrow_item().1.as_ref()
 }
 ```
-你可能想问 borrow_item 这个方法是哪里来的，其实我也不知道，打了`self.`后编译器弹出的提示里面第一个方法就是这个。不过猜也能猜到，这个方法肯定是`#[self_referencing]`这个宏，也就是文档中提到的 ouroboros 库带进来的。与之相对 borrow_map 这个方法也是有的。我贴一段 Kimi 生成的回答：
+你可能想问 borrow_item 这个方法是哪里来的，其实我也不知道，打了`self.`后编辑器自动弹出的提示里面第一个方法就是这个。不过猜也能猜到，这个方法肯定是`#[self_referencing]`这个宏，也就是文档中提到的 ouroboros 库带进来的。与之相对 borrow_map 这个方法也是有的。我贴一段 Kimi 生成的回答：
 >在 ouroboros（或类似库）里，只要字段被标记为 #[borrows(...)] 或 #[covariant] / #[not_covariant]，宏就会为 每一个普通字段（即没有被 #[borrows] 的字段）额外生成一组访问器：  
 >borrow_<字段名>() —— 只读借用  
 >borrow_<字段名>_mut() —— 可变借用  
 >into_<字段名>() —— 所有权转移  
 >笔者：那也就是除了 iter，另两个都会有
 
-与之相对的还有 with_xxx，同样包括带 mut 的，读者自己看吧。
+与之相似的还有 with_xxx，同样包括带 mut 的，读者自己看吧。
 
 同理，key 和 is_valid 也非常简单：
 ```rust,name=mem_table.rs
@@ -360,7 +394,7 @@ fn next(&mut self) -> Result<()> {
 ```
 最后还得写 scan。首先映入眼帘的就是这个方法的入参：Bound 是什么玩意？仔细看了下测试 case 才明白，原来 scan 的时候是要获取一个范围内的键值对的，这个 Bound 就是范围的上下界。然后这个方法返回的就是我们刚刚写的 MemTableIterator，检索一番后发现——坏了，没有类似代码，这回没得抄了！
 
-那就直接硬写吧，先不管边界，建一个结构体出来——当我这么想的时候，怎么写怎么不对劲，结构体怎么创建不出来了？actual_data 是个什么玩意？仔细看了下编译器的提示，原来又是 ouroboros 在搞鬼！ouroboros 的过程宏会自动给结构体生成一个 Builder，想不用都不行。先搞个框架出来。
+那就直接硬写吧，先不管边界，建一个结构体出来——当我这么想的时候，怎么写怎么不对劲，结构体怎么创建不出来了？actual_data 是个什么玩意？仔细看了下编译器的提示，原来又是 ouroboros 在搞鬼！ouroboros 的过程宏会**自动**给结构体生成一个 Builder，想不用都不行。先搞个框架出来。
 ```rust,name=mem_table.rs
 pub fn scan(&self, _lower: Bound<&[u8]>, _upper: Bound<&[u8]>) -> MemTableIterator {
     let builder = MemTableIteratorBuilder { 
@@ -623,7 +657,7 @@ let read_lock = self.state.read();
 iters.push(Box::new(read_lock.memtable.scan(_lower, _upper)));
 iters.append(&mut read_lock.imm_memtables.clone().into_iter().map(|i| Box::new(i.scan(_lower, _upper))).collect());
 ```
-这样就行了吗？并不行！跑测试一看，怎么被删掉的 key 还在里面呢？说明漏东西了。仔细一想，前面刚实现的 next 方法还没用呢。自然而然，要对这个 iter 使用了。完整代码如下：
+这样就行了吗？并不行！跑测试一看，怎么被删掉的 key 还在里面呢？说明漏东西了。仔细一想，前面刚实现的 next 方法还没用呢。自然而然，要对这个 iter 使用了。既然是删掉的还在，那就是要把键还在、值没了的条目过滤掉。完整代码如下：
 ```rust,name=lsm_storage.rs
 pub fn scan(
     &self,
@@ -660,9 +694,9 @@ fn next(&mut self) -> Result<()> {
     }
 }
 ```
-怎么还是不行？仔细一看报错，MergeIterator 的实现也有问题！债越来越多了。
+运行测试，怎么还是不行？仔细一看报错，原来之前 MergeIterator 的实现也有问题！债越来越多了。
 
-报错是代码中对一个 None 值调用了 unwrap()。MergeIterator 的几兄弟全有这个问题，那就全都要改了。用 unwrap_or_else 在为空是抛默认值就行：
+报错是代码中对一个 None 值调用了 unwrap()。这也有判断！MergeIterator 的几兄弟全有这个问题，那就全都要改了。用 or 方法在为空时抛个默认值而非报错就行：
 ```rust,name=iterators/merge_iterator.rs
 fn key(&self) -> KeySlice {
     self.current
@@ -688,7 +722,41 @@ fn next(&mut self) -> Result<()> {
 ```
 行了，终于能通过测试了。
 
+<details>
+<summary>思考题</summary>
+<b>Test Your Understanding</b>
+
+- What is the time/space complexity of using your merge iterator?
+  - O(log N)
+- Why do we need a self-referential structure for memtable iterator?
+  - 方便处理生命周期，保证迭代器不会比它引用的数据存活更久
+- If a key is removed (there is a delete tombstone), do you need to return it to the user? Where did you handle this logic?
+  - 不用，会被跳过，参考 scan 方法
+- If a key has multiple versions, will the user see all of them? Where did you handle this logic?
+  - 不能，只能看到最新的，参考 next 方法
+- If we want to get rid of self-referential structure and have a lifetime on the memtable iterator (i.e., MemtableIterator<'a>, where 'a = memtable or LsmStorageInner lifetime), is it still possible to implement the scan functionality?
+  - 不确定，感觉也可以，就是很麻烦
+- What happens if (1) we create an iterator on the skiplist memtable (2) someone inserts new keys into the memtable (3) will the iterator see the new key?
+  - 不行，迭代器还看不到没冻结的新写入的数据，需要冻结以后才行
+- What happens if your key comparator cannot give the binary heap implementation a stable order?
+  - 堆的排序就不准了，没法确定返回的是新数据还是旧数据
+- Why do we need to ensure the merge iterator returns data in the iterator construction order?
+  - 为了读的时候能先拿到新数据
+-Is it possible to implement a Rust-style iterator (i.e., next(&self) -> (Key, Value)) for LSM iterators? What are the pros/cons?
+  - 这题不会……感觉不太行
+- The scan interface is like fn scan(&self, lower: Bound<&[u8]>, upper: Bound<&[u8]>). How to make this API compatible with Rust-style range (i.e., key_a..key_b)? If you implement this, try to pass a full range .. to the interface and see what will happen.
+  - 上下界的核心就是 map.range，把这段改造一下也能适配，比方说换成有序列表之类的。
+- The starter code provides the merge iterator interface to store Box<I> instead of I. What might be the reason behind that?
+  - Box 最重要的作用就是大对象出栈入堆，容器混用，以及好管理特质对象。好处无非就是这几点。
+</details>
+
+这节的思考题也不太简单，不过只要能写出上面的代码，对内存表应该已经有很深的理解了，区区这种问题应该难不倒吧。Bonus Task 就挺难了，短时间估计做不出来，以后再说。
+
 ### Day3：Block
+这一节终于不是内存表了，要实现的是块。所谓的块，就是 LSM 树在磁盘上的最小存储单元。也就是说，在 LSM 树中，当内存表满了的时候，数据就会以块的形式落盘。
+
+#### Task1：块构造器
+
 {{ admonition(type="warning", title="注意", text="施工中") }}
 ```rust,name=
 

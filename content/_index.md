@@ -7,7 +7,7 @@ sort_by = "none"
 [extra]
 header = {title = "欢迎来到 mxdzs0612 的博客", img = "images/avatar.jpg", img_alt = "mxdzs0612" }
 section_path = "blog/_index.md"
-max_posts = 10
+max_posts = 20
 projects_path = "projects/_index.md"
 +++
 
