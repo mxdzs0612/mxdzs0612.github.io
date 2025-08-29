@@ -440,7 +440,7 @@ pub fn scan(&self, _lower: Bound<&[u8]>, _upper: Bound<&[u8]>) -> MemTableIterat
 
 Day2 难度猛增，写到这我都有点想放弃了，哎，太痛苦了！万恶的 ouroboros！要是以后每节都来个新的第三方库，我可顶不住啊！
 
-#### Task2：合并迭代器
+#### Task2：归并迭代器
 这节我们要实现的还是这四兄弟，以及一个 create 方法。仔细一看，哦，原来 StorageIterator 是个特质，之前还没留意。
 
 这节不能愣头写，得先知道要我们实现什么。仔细阅读文档，能够得知这里需要合并多个内存表，返回最新的那个值。里面还用了二叉堆排序输出，
@@ -727,7 +727,8 @@ fn next(&mut self) -> Result<()> {
 <b>Test Your Understanding</b>
 
 - What is the time/space complexity of using your merge iterator?
-  - O(log N)
+  - O(log N) （指 next 方法）
+  - O(n)
 - Why do we need a self-referential structure for memtable iterator?
   - 方便处理生命周期，保证迭代器不会比它引用的数据存活更久
 - If a key is removed (there is a delete tombstone), do you need to return it to the user? Where did you handle this logic?
@@ -746,7 +747,7 @@ fn next(&mut self) -> Result<()> {
   - 这题不会……感觉不太行
 - The scan interface is like fn scan(&self, lower: Bound<&[u8]>, upper: Bound<&[u8]>). How to make this API compatible with Rust-style range (i.e., key_a..key_b)? If you implement this, try to pass a full range .. to the interface and see what will happen.
   - 上下界的核心就是 map.range，把这段改造一下也能适配，比方说换成有序列表之类的。
-- The starter code provides the merge iterator interface to store Box<I> instead of I. What might be the reason behind that?
+- The starter code provides the merge iterator interface to store `Box<I>` instead of I. What might be the reason behind that?
   - Box 最重要的作用就是大对象出栈入堆，容器混用，以及好管理特质对象。好处无非就是这几点。
 </details>
 
@@ -756,6 +757,133 @@ fn next(&mut self) -> Result<()> {
 这一节终于不是内存表了，要实现的是块。所谓的块，就是 LSM 树在磁盘上的最小存储单元。也就是说，在 LSM 树中，当内存表满了的时候，数据就会以块的形式落盘。
 
 #### Task1：块构造器
+这一节终于到我熟悉的领域了，之前扣 parquet 编码的日子还历历在目。这回做的事情也差不多，写就完事了。存储到头来都是这种细活。
+
+这个 Task 需要实现 6 个方法，先来写 builder 里面的。很明显最难的是 add，先把它跳过，其他 3 个都是送分的。
+```rust,name=block/builder.rs
+impl BlockBuilder {
+    /// Creates a new block builder.
+    pub fn new(block_size: usize) -> Self {
+        Self {
+            offsets: vec![],
+            data: vec![],
+            block_size: block_size,
+            first_key: KeyVec::new(),
+        }
+    }
+
+    /// Adds a key-value pair to the block. Returns false when the block is full.
+    /// You may find the `bytes::BufMut` trait useful for manipulating binary data.
+    #[must_use]
+    pub fn add(&mut self, key: KeySlice, value: &[u8]) -> bool {
+        unimplemented!()
+    }
+
+    /// Check if there is no key-value pair in the block.
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    /// Finalize the block.
+    pub fn build(self) -> Block {
+        Block {
+            data: self.data,
+            offsets: self.offsets,
+        }
+    }
+}
+```
+接下来来攻克 add。这里比较麻烦的是有一个 block_size，也就是需要处理大小相关的东西。first_key 是什么东西？搜索半天单测和代码后发现目前好像没什么用，但是文档中有这句话：
+>The block has a size limit, which is target_size. Unless the first key-value pair exceeds the target block size, you should ensure that the encoded block size is always less than or equal to target_size. (In the provided code, the target_size here is essentially the block_size)
+
+注意这个 Unless。这个的意思是说，无论如何至少也得能写进去一组键值对，也就是说第一组键值对不受 block_size 限制。哦，first_key 就是用来存这个的！当 first_key 有内容的时候，就说明现在 add 的不是第一组键值对了！需要判断 block_size 了！
+
+那么，一个 block 究竟有多长呢？文档中写到块长这样
+```
+----------------------------------------------------------------------------------------------------
+|             Data Section             |              Offset Section             |      Extra      |
+----------------------------------------------------------------------------------------------------
+| Entry #1 | Entry #2 | ... | Entry #N | Offset #1 | Offset #2 | ... | Offset #N | num_of_elements |
+----------------------------------------------------------------------------------------------------
+```
+也就是说，块大小就等于 entry 数量（也就是 data 长度，因为 data 是 u8）加上 Offset 数量 * 2（因为 Offset 是 u16）再加上 Extra 长度（一个 u16 大小，固定为 2）。于是我们开始写代码：
+```rust,name=block/builder.rs
+/// Adds a key-value pair to the block. Returns false when the block is full.
+/// You may find the `bytes::BufMut` trait useful for manipulating binary data.
+#[must_use]
+pub fn add(&mut self, key: KeySlice, value: &[u8]) -> bool {
+    // 根据提示，我们加一个 assert
+    assert!(!key.is_empty());
+    if self.first_key.is_empty() {
+        // 吐槽一下，KeyVec 的这几个接口太难用了，只能转这么一遭
+        self.first_key = KeyVec::from_vec(key.raw_ref().to_vec());
+    } else if self.block_size
+        // 最后别忘了还要加上本次要写的这一对
+        < self.data.len() + self.offsets.len() * 2 + 2 + key.len() + value.len()
+    {
+        return false;
+    }
+    // 肯定要先写 offset，表示这次写入的字段的起始位置
+    self.offsets.push(self.data.len() as u16);
+    // 我写完才发现上面提示了可以用 bytes::BufMut，又是个第三方库，确实好用，可以直接 put_u16
+    // 不过写都写了，rust 自带的 extend_from_slice 也能用，以后有问题再改
+    // 写入 2 字节的 key 长度，to_be_bytes 表示大端写入
+    self.data.extend_from_slice(&key.len().to_be_bytes());
+    // 写入 key
+    self.data.extend_from_slice(&key.raw_ref());
+    // 写入 2 字节的 value 长度
+    self.data.extend_from_slice(&value.len().to_be_bytes());
+    // 写入 value
+    self.data.extend_from_slice(&value);
+
+    true
+}
+```
+然后处理编码解码。注意 encoded 返回的 Bytes 就是前面那个注释里的特质的第三方库，这次想不用都不行了。
+
+这次的核心还是块的那张图，就是个纯手搓，实际上没任何难度。详情看注释吧。
+```rust,name=block.rs
+impl Block {
+    /// Encode the internal data to the data layout illustrated in the course
+    /// Note: You may want to recheck if any of the expected field is missing from your output
+    pub fn encode(&self) -> Bytes {
+        // 第一部分即数据部分，也就是键值对已经编好码了，直接 clone 一份就行
+        let mut b = self.data.clone();
+        // 第二部分，offset，需要写个小循环，逐个取值然后写成 u16
+        // 这个 put_u16 就是 bytes::BufMut 特质带过来的方法
+        for offset in &self.offsets {
+            b.put_u16(*offset);
+        }
+        // 第三部分，存的数据个数，看 offsets 数组大小即可
+        b.put_u16(self.offsets.len() as u16);
+        b.into()
+    }
+
+    /// Decode from the data layout, transform the input `data` to a single `Block`
+    pub fn decode(data: &[u8]) -> Self {
+        // 输入是整个的 u8 数组，因此要先找到三部分的切分点
+        // 第二、第三部分的切分点非常简单，固定倒数 2 字节就是
+        let offset_extra_split = data.len() - 2;
+        // 解析出数据的个数
+        let num = (&data[offset_extra_split..data.len()]).get_u16() as usize;
+        // 根据数据个数，再找到第一、第二部分的切分点
+        let data_offset_split = data.len() - 2 - 2 * num;
+        // 解码 offsets
+        let offset_bytes = &data[data_offset_split..offset_extra_split];
+        let offsets: Vec<u16> = offset_bytes
+            // 这个方法就是在把两字节拼在一起
+            .chunks_exact(2)
+            // 闭包用于把两字节解析成 u16
+            .map(|chunk| u16::from_be_bytes(chunk.try_into().unwrap()))
+            // 转成 Vec
+            .collect();
+        // 剩下的就是 data，怎么来的还是怎么回去，同样转成 Vec
+        let data = data[0..data_offset_split].to_vec();
+        Self { data, offsets }
+    }
+}
+```
+写到这里，这节的测试除了最后两个，应该都通过了。真的是轻轻松松～
 
 {{ admonition(type="warning", title="注意", text="施工中") }}
 ```rust,name=
