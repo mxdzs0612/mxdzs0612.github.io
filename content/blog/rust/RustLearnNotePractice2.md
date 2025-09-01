@@ -1,5 +1,5 @@
 +++
-title = "Rust 项目实战（二）：Mini-LSM（更新至1-2）"
+title = "Rust 项目实战（二）：Mini-LSM（更新至1-3）"
 slug = "rust_learn_note_prac_2"
 date = 2025-08-13
 updated = 2025-08-25
@@ -456,6 +456,7 @@ fn value(&self) -> &[u8] {
 }
 
 fn is_valid(&self) -> bool {
+    // 这里编译器还会提示用 .is_some_and，能省一个参数，只是我懒得改了
     self.current.as_ref().map_or(false, |iter| iter.1.is_valid())
 }
 ```
@@ -757,7 +758,7 @@ fn next(&mut self) -> Result<()> {
 这一节终于不是内存表了，要实现的是块。所谓的块，就是 LSM 树在磁盘上的最小存储单元。也就是说，在 LSM 树中，当内存表满了的时候，数据就会以块的形式落盘。
 
 #### Task1：块构造器
-这一节终于到我熟悉的领域了，之前扣 parquet 编码的日子还历历在目。这回做的事情也差不多，写就完事了。存储到头来都是这种细活。
+这一节终于到我熟悉的领域了，之前死抠 parquet 编码的日子还历历在目。这回做的事情也差不多，就是个组装拼接，写就完事了。存储到头来都是这种细活。
 
 这个 Task 需要实现 6 个方法，先来写 builder 里面的。很明显最难的是 add，先把它跳过，其他 3 个都是送分的。
 ```rust,name=block/builder.rs
@@ -793,12 +794,12 @@ impl BlockBuilder {
     }
 }
 ```
-接下来来攻克 add。这里比较麻烦的是有一个 block_size，也就是需要处理大小相关的东西。first_key 是什么东西？搜索半天单测和代码后发现目前好像没什么用，但是文档中有这句话：
+接下来来攻克 add。这里比较麻烦的是有一个 block_size，也就是需要处理大小相关的东西。先挨个看看结构体的属性，其他都简单，first_key 是什么东西？搜索半天单测和代码后发现目前好像没什么用，但是文档中有这句话：
 >The block has a size limit, which is target_size. Unless the first key-value pair exceeds the target block size, you should ensure that the encoded block size is always less than or equal to target_size. (In the provided code, the target_size here is essentially the block_size)
 
-注意这个 Unless。这个的意思是说，无论如何至少也得能写进去一组键值对，也就是说第一组键值对不受 block_size 限制。哦，first_key 就是用来存这个的！当 first_key 有内容的时候，就说明现在 add 的不是第一组键值对了！需要判断 block_size 了！
+注意这个 Unless。这个的意思是说，无论如何至少也得能写进去一组键值对，也就是说第一组键值对不受 block_size 限制，不管它多大也得能够写进去。哦，first_key 就是用来存这个的！当 first_key 有内容的时候，就说明现在 add 的不是第一组键值对了！需要判断 block_size 了！
 
-那么，一个 block 究竟有多长呢？文档中写到块长这样
+那么，一个 block 究竟有多大呢？文档中写到块长这样
 ```
 ----------------------------------------------------------------------------------------------------
 |             Data Section             |              Offset Section             |      Extra      |
@@ -819,7 +820,8 @@ pub fn add(&mut self, key: KeySlice, value: &[u8]) -> bool {
         self.first_key = KeyVec::from_vec(key.raw_ref().to_vec());
     } else if self.block_size
         // 最后别忘了还要加上本次要写的这一对
-        < self.data.len() + self.offsets.len() * 2 + 2 + key.len() + value.len()
+        // 6 是每个键值对的固定“支出”，即 key_len + value_len + offset
+        < self.data.len() + self.offsets.len() * 2 + 2 + key.len() + value.len() + 6
     {
         return false;
     }
@@ -841,7 +843,7 @@ pub fn add(&mut self, key: KeySlice, value: &[u8]) -> bool {
 ```
 然后处理编码解码。注意 encoded 返回的 Bytes 就是前面那个注释里的特质的第三方库，这次想不用都不行了。
 
-这次的核心还是块的那张图，就是个纯手搓，实际上没任何难度。详情看注释吧。
+这次的核心还是块的那张图，可以理解成纯手动的 concat 和 split，实际上没任何难度，我都懒得讲了。详情看下面代码的注释吧。唯一需要注意的就是类型转换，基本上是 usize 和 u16/u8 的互转，ide 都会提示的。
 ```rust,name=block.rs
 impl Block {
     /// Encode the internal data to the data layout illustrated in the course
@@ -864,28 +866,211 @@ impl Block {
         // 输入是整个的 u8 数组，因此要先找到三部分的切分点
         // 第二、第三部分的切分点非常简单，固定倒数 2 字节就是
         let offset_extra_split = data.len() - 2;
-        // 解析出数据的个数
+        // 读取第三部分的内容，从中解析出数据的个数
+        // 既然有 put 就有 get，不过这个 get 有坑，下一节就能看到
         let num = (&data[offset_extra_split..data.len()]).get_u16() as usize;
         // 根据数据个数，再找到第一、第二部分的切分点
+        // 具体为什么这么写应该不需要解释了，看 builder 是怎么存的就行
         let data_offset_split = data.len() - 2 - 2 * num;
         // 解码 offsets
-        let offset_bytes = &data[data_offset_split..offset_extra_split];
-        let offsets: Vec<u16> = offset_bytes
-            // 这个方法就是在把两字节拼在一起
+        let offsets = data[data_offset_split..offset_extra_split]
+            // 这个方法就是在把字节两两拼在一起
             .chunks_exact(2)
-            // 闭包用于把两字节解析成 u16
+            // 闭包用于把刚拼好的两字节解析成 u16
             .map(|chunk| u16::from_be_bytes(chunk.try_into().unwrap()))
             // 转成 Vec
             .collect();
-        // 剩下的就是 data，怎么来的还是怎么回去，同样转成 Vec
+        // 最后剩下的那一部分就是 data，怎么来的还是怎么回去
+        // 同样转成 Vec
         let data = data[0..data_offset_split].to_vec();
         Self { data, offsets }
     }
 }
 ```
-写到这里，这节的测试除了最后两个，应该都通过了。真的是轻轻松松～
+写到这里，这节的测试除了最后两个，应该都通过了。真的是轻轻松松～我的实现稍微有点硬编码了，当然这无伤大雅，并不影响正确性，在注释清晰的情况下也还算易读吧，大概 XD
+
+#### Task2：块迭代器
+这节居然只有两个 Task，可喜可贺，可喜可贺。
+
+这次又要来写迭代器了，这四兄弟又来了，我真是服了。当然要实现的不止迭代器特质的这四个方法，还有一些独属于块迭代器的东西。
+
+老样子，先把简单的写了。
+```rust,name=block/iterator.rs
+/// Creates a block iterator and seek to the first entry.
+pub fn create_and_seek_to_first(block: Arc<Block>) -> Self {
+    let mut iter = Self::new(block);
+    iter.seek_to_first();
+    iter
+}
+
+/// Creates a block iterator and seek to the first key that >= `key`.
+pub fn create_and_seek_to_key(block: Arc<Block>, key: KeySlice) -> Self {
+    let mut iter = Self::new(block);
+    iter.seek_to_key(key);
+    iter
+}
+
+/// Returns the key of the current entry.
+pub fn key(&self) -> KeySlice {
+    self.key.as_key_slice()
+}
+
+/// Returns the value of the current entry.
+pub fn value(&self) -> &[u8] {
+    &self.block.data[self.value_range.0..self.value_range.1]
+}
+
+/// Returns true if the iterator is valid.
+/// Note: You may want to make use of `key`
+pub fn is_valid(&self) -> bool {
+    !self.key.is_empty()
+}
+```
+这几个方法应该都没什么好说的。其中 value 直接看 BlockIterator 里面 value_range 的注释应该很容易想到（当然，如果这么写的话债是要还的，最后实现 seek 方法的时候要补充 value_range）；is_valid 的注释有提示，照做就是了。
+
+众所周知，之前的几个迭代器中 next 都是最难写的那个，这次又多了另外两个方法 seek_to_first 和 seek_to_key。他们三个有什么区别呢？其实仅仅在于读的 key 不同。他们分别要读 idx、0、和查找到 >= key 的第一个键，其他方面完全没区别。所以，我们可以考虑抽象一个公共方法，让他们尽管去调就是了。先来写这个公共方法吧。这一节的核心是这个：
+```
+-----------------------------------------------------------------------
+|                           Entry #1                            | ... |
+-----------------------------------------------------------------------
+| key_len (2B) | key (keylen) | value_len (2B) | value (varlen) | ... |
+-----------------------------------------------------------------------
+```
+这个结构在上一个 task 的 add 方法判断 block_size 的时候也用上了，但这次是解码，能不能解出来全靠它，所以必须拿到近一点的地方，照着它写。
+```rust,name=block/iterator.rs
+fn get_at_idx(&mut self, idx: usize) {
+    let offset = self.block.offsets[idx] as usize;
+    // 拿切片必须是引用，详情可以翻原来的博客
+    let mut data = &self.block.data[offset..];
+    // 读取 data，解析出图中 key_len 的值
+    let key_len = data.get_u16() as usize;
+    // 根据 key_len 拿 key
+    // 注意 get_u16 方法上有这个注释：
+    // The current position is advanced by 2.
+    // 也就是不用再手动处理 data 的左区间了。我调了老半天最后才发现这个坑
+    let key = &data[..key_len];
+    // 直接覆盖就行，简单粗暴
+    self.key = KeyVec::from_vec(key.to_vec());
+    data = &data[key_len..];
+    // 此时就能解析出 value_len
+    let value_len = data.get_u16() as usize;
+    self.value_range = (offset + key_len + 4, offset + key_len + value_len + 4);
+    self.idx = idx;
+}
+```
+然后就可以让那三个方法调用它了：
+```rust,name=block/iterator.rs
+/// Seeks to the first key in the block.
+pub fn seek_to_first(&mut self) {
+    self.get_at_idx(0);
+}
+
+/// Move to the next key in the block.
+pub fn next(&mut self) {
+    self.idx += 1;
+    self.get_at_idx(self.idx);
+}
+
+/// Seek to the first key that >= `key`.
+/// Note: You should assume the key-value pairs in the block are sorted when being added by
+/// callers.
+pub fn seek_to_key(&mut self, key: KeySlice) {
+    // 这里正常情况应该是要用二分的，只是我懒
+    for i in 0..self.block.offsets.len() {
+        self.get_at_idx(i);
+        if self.key() < key {
+            continue;
+        } else {
+            return;
+        }
+    }
+    self.get_at_idx(self.block.offsets.len());
+}
+```
+运行测试，怎么报了个看不懂的错？
+```sh
+assertion `left == right` failed: expected key: b"key_000", actual key: b""
+    left: []
+    right: [107, 101, 121, 95, 48, 48, 48]
+```
+开 debug 看了一遍，发现 block 里面的东西的值有问题，全都是空的，根本没正常解析！怎么回事呢？研究一番后发现，伏笔回收！add 方法得改！你可能想说之前不还好好的呢，怎么回事呢？我也没仔细研究，只能说迟神的测试 case 还有改进空间（
+```rust,name=block/builder.rs
+/// Adds a key-value pair to the block. Returns false when the block is full.
+/// You may find the `bytes::BufMut` trait useful for manipulating binary data.
+#[must_use]
+pub fn add(&mut self, key: KeySlice, value: &[u8]) -> bool {
+    assert!(!key.is_empty());
+    if self.first_key.is_empty() {
+        self.first_key = KeyVec::from_vec(key.raw_ref().to_vec());
+    } else if self.block_size
+        < self.data.len() + self.offsets.len() * 2 + 2 + key.len() + value.len() + 6
+    {
+        return false;
+    }
+
+    self.offsets.push(self.data.len() as u16);
+    // 还是得按注释的提示来，用他的方法就好了
+    self.data.put_u16(key.len() as u16);
+    self.data.put(key.raw_ref());
+    self.data.put_u16(value.len() as u16);
+    self.data.put(value);
+
+    true
+}
+```
+然后再运行测试，怎么还是错的？这次的报错是
+```sh
+index out of bounds: the len is 100 but the index is 100
+```
+好吧，看懂了。得加一个超过长度的判断。迭代的时候超过表示范围了，那这个迭代器就到头了，就得让它初始化然后归位，进下一轮。怎么把这玩意忘了……
+```rust,name=
+fn get_at_idx(&mut self, idx: usize) {
+    if idx >= self.block.offsets.len() {
+        self.key.clear();
+        self.value_range = (0, 0);
+        return;
+    }
+    let offset = self.block.offsets[idx] as usize;
+    // ...
+}
+```
+现在在运行测试，果然一切都正常了。
+
+Task2 比 Task1 略难，不过难的也有限，写起来比 Day1 和 Day2 快太多了。
+
+<details>
+<summary>思考题</summary>
+<b>Test Your Understanding</b>
+- What is the time complexity of seeking a key in the block?
+- Where does the cursor stop when you seek a non-existent key in your implementation?
+- So Block is simply a vector of raw data and a vector of offsets. Can we change them to Byte and Arc<[u16]>, and change all the iterator interfaces to return Byte instead of &[u8]? (Assume that we use Byte::slice to return a slice of the block without copying.) What are the pros/cons?
+- What is the endian of the numbers written into the blocks in your implementation?
+- Is your implementation prune to a maliciously-built block? Will there be invalid memory access, or OOMs, if a user deliberately construct an invalid block?
+- Can a block contain duplicated keys?
+- What happens if the user adds a key larger than the target block size?
+- Consider the case that the LSM engine is built on object store services (S3). How would you optimize/change the block format and parameters to make it suitable for such services?
+- Do you love bubble tea? Why or why not?
+</details>
+
+这节的思考题还没写，过两天再说。Bonus Task 好像有点意思，不过我还是懒，先不管了。
+
+### Day4：Sorted String Table (SST)
 
 {{ admonition(type="warning", title="注意", text="施工中") }}
 ```rust,name=
 
 ```
+
+<!-- <details>
+<summary>思考题</summary>
+<b>Test Your Understanding</b>
+- What is the time complexity of seeking a key in the SST?
+- Where does the cursor stop when you seek a non-existent key in your implementation?
+- Is it possible (or necessary) to do in-place updates of SST files?
+-An SST is usually large (i.e., 256MB). In this case, the cost of copying/expanding the Vec would be significant. Does your implementation allocate enough space for your SST builder in advance? How did you implement it?
+- Looking at the moka block cache, why does it return Arc<Error> instead of the original Error?
+- Does the usage of a block cache guarantee that there will be at most a fixed number of blocks in memory? For example, if you have a moka block cache of 4GB and block size of 4KB, will there be more than 4GB/4KB number of blocks in memory at the same time?
+- Is it possible to store columnar data (i.e., a table of 100 integer columns) in an LSM engine? Is the current SST format still a good choice?
+- Consider the case that the LSM engine is built on object store services (i.e., S3). How would you optimize/change the SST format/parameters and the block cache to make it suitable for such services?
+- For now, we load the index of all SSTs into the memory. Assume you have a 16GB memory reserved for the indexes, can you estimate the maximum size of the database your LSM system can support? (That's why you need an index cache!)
+</details> -->
